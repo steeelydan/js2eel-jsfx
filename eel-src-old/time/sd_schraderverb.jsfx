@@ -1,0 +1,150 @@
+/*
+v1.0.0
+
+An old-school Schroeder reverb.
+Turn down the diffusion to get the super grainy stuff.
+*/
+
+desc:sd_schraderverb
+
+in_pin:Left In
+in_pin:Right In
+out_pin:Left Out
+out_pin:Right Out
+
+// Decay = 4.2s
+slider1:combFeedback=0.941<0,0.99,0.001>Length
+slider2:size=18.74<3, 50, 0.01>Size (m)
+slider3:apfGain=0.667<0, 1, 0.001>Diffusion
+slider5:combSizeFactor=1.96<0.5, 4, 0.01>Comb/size
+slider6:comb2Factor=1.324<0.5, 4, 0.001>Comb2/Comb1
+slider7:comb3Factor=1.199<0.5, 4, 0.001>Comb3/Comb1
+slider8:comb4Factor=1.107<0.5, 4, 0.001>Comb4/Comb1
+slider10:apfSizeFactor=0.327<0.1, 1, 0.001>APF/size
+slider11:apf2Factor=0.346<0.1, 1, 0.001>APF2/APF1
+slider50:mixDry=1<0,1,0.01>Dry
+slider51:mixWet=0.33<0,1,0.01>Wet
+slider52:volume=1<0,1.5,0.01>Out Volume
+
+@init
+
+combBufferSize = 20000;
+
+comb1Buffer = 0;
+comb2Buffer = 1 * combBufferSize;
+comb3Buffer = 2 * combBufferSize;
+comb4Buffer = 3 * combBufferSize;
+
+apfBufferSize = 4000;
+apfBufferStart = 4 * combBufferSize;
+apf1FFBufferL = apfBufferStart;
+apf1FFBufferR = apfBufferStart + apfBufferSize;
+apf1FBBufferL = apfBufferStart + 2 * apfBufferSize;
+apf1FBBufferR = apfBufferStart + 3 * apfBufferSize;
+apf2FFBufferL = apfBufferStart + 4 * apfBufferSize;
+apf2FFBufferR = apfBufferStart + 5 * apfBufferSize;
+apf2FBBufferL = apfBufferStart + 6 * apfBufferSize;
+apf2FBBufferR = apfBufferStart + 7 * apfBufferSize;
+
+@slider
+
+comb1Ms = size * combSizeFactor;
+comb2Ms = size * combSizeFactor * comb2Factor;
+comb3Ms = size * combSizeFactor * comb3Factor;
+comb4Ms = size * combSizeFactor * comb4Factor;
+
+comb1Samples = comb1Ms * srate / 1000;
+comb2Samples = comb2Ms * srate / 1000;
+comb3Samples = comb3Ms * srate / 1000;
+comb4Samples = comb4Ms * srate / 1000;
+
+apf1Ms = size * apfSizeFactor;
+apf1Samples = apf1Ms * srate / 1000;
+apf2Ms = size * apfSizeFactor * apf2Factor;
+apf2Samples = apf2Ms * srate / 1000;
+
+@sample
+
+dryL = spl0;
+dryR = spl1;
+
+// Comb Filters
+
+comb1Index = combWriteIndex - comb1Samples;
+comb2Index = combWriteIndex - comb2Samples;
+comb3Index = combWriteIndex - comb3Samples;
+comb4Index = combWriteIndex - comb4Samples;
+
+comb1Index < 0 ? comb1Index += combBufferSize;
+comb2Index < 0 ? comb2Index += combBufferSize;
+comb3Index < 0 ? comb3Index += combBufferSize;
+comb4Index < 0 ? comb4Index += combBufferSize;
+
+comb1 = comb1Buffer[comb1Index];
+comb2 = comb2Buffer[comb2Index];
+comb3 = comb3Buffer[comb3Index];
+comb4 = comb4Buffer[comb4Index];
+
+comb1Buffer[combWriteIndex] = dryL + comb1 * combFeedback;
+comb2Buffer[combWriteIndex] = dryL + comb2 * combFeedback;
+comb3Buffer[combWriteIndex] = dryR + comb3 * combFeedback;
+comb4Buffer[combWriteIndex] = dryR + comb4 * combFeedback;
+
+combWriteIndex += 1;
+combWriteIndex >= combBufferSize ? combWriteIndex = 0;
+
+// Sum; some shuffling & phase reversal
+wetL = dryL + comb1 + comb3 * -1;
+wetR = dryR + comb2 * -1 + comb4;
+
+wetL *= 0.5;
+wetR *= 0.5;
+
+// Allpass Filters
+
+
+apf1Index = apfWriteIndex - apf1Samples;
+apf1Index < 0 ? apf1Index += apfBufferSize;
+
+apfFF1L = apf1FFBufferL[apf1Index];
+apfFF1R = apf1FFBufferR[apf1Index];
+apfFB1L = apf1FBBufferL[apf1Index];
+apfFB1R = apf1FBBufferR[apf1Index];
+
+apf1FFBufferL[apfWriteIndex] = wetL;
+apf1FFBufferR[apfWriteIndex] = wetR;
+
+apf1WetL = apfGain * wetL + apfFF1L - apfGain * apfFB1L;
+apf1WetR = apfGain * wetR + apfFF1R - apfGain * apfFB1R;
+
+apf1FBBufferL[apfWriteIndex] = apf1WetL;
+apf1FBBufferR[apfWriteIndex] = apf1WetR;
+
+wetL = apf1WetL;
+wetR = apf1WetR;
+
+apf2Index = apfWriteIndex - apf2Samples;
+apf2Index < 0 ? apf2Index += apfBufferSize;
+
+apfFF2L = apf2FFBufferL[apf2Index];
+apfFF2R = apf2FFBufferR[apf2Index];
+apfFB2L = apf2FBBufferL[apf2Index];
+apfFB2R = apf2FBBufferR[apf2Index];
+
+apf2FFBufferL[apfWriteIndex] = wetL;
+apf2FFBufferR[apfWriteIndex] = wetR;
+
+apf2WetL = apfGain * wetL + apfFF2L - apfGain * apfFB2L;
+apf2WetR = apfGain * wetR + apfFF2R - apfGain * apfFB2R;
+
+apf2FBBufferL[apfWriteIndex] = apf2WetL;
+apf2FBBufferR[apfWriteIndex] = apf2WetR;
+
+wetL = apf2WetL;
+wetR = apf2WetR;
+
+apfWriteIndex += 1;
+apfWriteIndex >= apfBufferSize ? apfWriteIndex = 0;
+
+spl0 = (mixDry * dryL + mixWet * wetL) * volume;
+spl1 = (mixDry * dryR + mixWet * wetR) * volume;

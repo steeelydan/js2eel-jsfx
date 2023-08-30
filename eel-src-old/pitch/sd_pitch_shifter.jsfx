@@ -1,0 +1,21 @@
+/*
+v0.0.1
+https://wiki.cockos.com/wiki/index.php/1st_Ever_Jesusonic_Tutorial
+*/
+
+desc:sd_pitch_shifter
+
+
+slider1: pitch=1<0.0833333333, 5, 0.0833333333>Pitch (st)
+
+@sample
+blen = srate/8;
+bpos[0]=spl0;
+// Use offset of buffer length (srate/8) for storing spl1
+bpos[blen]=spl1;
+
+// Modify position in buffer by pitch to change speed
+spl0 = (bpos * pitch)[-floor(bpos * pitch / blen) * blen];
+spl1 = (bpos * pitch)[-floor(bpos * pitch / blen) * blen + blen];
+
+(bpos += 1) >= blen ? bpos = 0;

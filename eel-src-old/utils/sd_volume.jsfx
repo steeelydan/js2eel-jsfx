@@ -1,0 +1,16 @@
+/*
+v1.0.0
+*/
+
+desc:sd_volume
+
+// https://wiki.cockos.com/wiki/index.php/1st_Ever_Jesusonic_Tutorial
+
+slider1:volume=0 < -150 , 18 , 0.1 >Volume [dB]
+
+@slider
+volume > -149.9 ? target = 10 ^ ( volume / 20 ) : target = 0;
+
+@sample
+spl0 *= target;
+spl1 *= target;

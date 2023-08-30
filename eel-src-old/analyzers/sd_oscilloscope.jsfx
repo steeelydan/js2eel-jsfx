@@ -1,0 +1,61 @@
+/*
+v1.0.0
+Tutorial: https://www.youtube.com/watch?v=dJnABqy_kB0
+*/
+
+desc:sd_oscilloscope
+
+
+slider1:hold=0<0,1,1{Off,On}>Hold
+// x6
+slider2:displaySampleSize=132300<10,793800,1>Zoom horizontally
+slider3:amplitudeMult=1<0,10,0.01>Zoom vertically
+
+@init
+
+samples = 0;
+sampleSize = srate * 27;
+samplesCounter = -1;
+
+
+oldHold = hold;
+
+@slider
+
+oldHold != hold && hold == 0 ? (
+  memset(samples, 0, sampleSize);
+);
+
+oldHold = hold;
+
+@sample
+
+!hold ? (
+  samplesCounter += 1;
+  samplesCounter == sampleSize ? samplesCounter = 0;
+
+  samples[samplesCounter] = spl0;
+);
+
+@gfx
+
+halfHeight = gfx_h / 2;
+increment = gfx_w / displaySampleSize;
+
+// Center line
+gfx_set(0.5);
+gfx_line(0, halfHeight, gfx_w, halfHeight);
+
+gfxSamplesCounter = samplesCounter;
+
+gfx_set(1);
+gfx_x = gfx_w;
+gfx_y = halfHeight - samples[samplesCounter] * halfHeight * amplitudeMult;
+
+loop(displaySampleSize,
+  gfxSamplesCounter -= 1;
+  gfxSamplesCounter == -1 ? gfxSamplesCounter = sampleSize;
+
+  gfx_lineto(gfx_x - increment,
+    halfHeight - samples[gfxSamplesCounter] * halfHeight * amplitudeMult);
+)

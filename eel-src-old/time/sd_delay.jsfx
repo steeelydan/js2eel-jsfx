@@ -1,0 +1,66 @@
+/*
+v1.0.0
+
+Adapted from Cockos' JSFX Delay
+*/
+
+desc:sd_delay
+
+slider1:type=0<0,2,1{Mono,Stereo,PingPong}>Type
+slider2:lengthMsL=120<0,2000,1>Delay L / Mono (ms)
+slider3:lengthMsR=120<0,2000,1>Delay R (ms)
+slider4:feedbackPercent=0<0,100,0.1>Feedback (%)
+slider5:mixDb=-6<-120,6,1>Mix (dB)
+
+in_pin:Left In
+in_pin:Right In
+out_pin:Left Out
+out_pin:Right Out
+
+@init
+DELAY_TYPE_MONO = 0;
+DELAY_TYPE_STEREO = 1;
+DELAY_TYPE_PINGPONG = 2;
+
+bufferSize = 400000;
+bufferPosL = 0;
+bufferPosR = bufferSize;
+
+@slider
+type == DELAY_TYPE_MONO ? (
+    lengthMsR = lengthMsL;
+);
+
+numSamplesL = lengthMsL * srate / 1000;
+numSamplesR = lengthMsR * srate / 1000;
+
+feedback = feedbackPercent / 100;
+mix = 2 ^ ( mixDb / 6 );
+
+@sample
+type == DELAY_TYPE_MONO ? (
+    // Mono
+    samplesL = bufferPosL;
+    samplesR = bufferPosL;
+) : (
+    // Stereo
+    samplesL = bufferPosL;
+    samplesR = bufferSize + bufferPosR;
+);
+
+bufferValueL = samplesL[0];
+bufferValueR = samplesR[0];
+
+type == DELAY_TYPE_PINGPONG ? (
+    samplesR[0] = min(spl0 + bufferValueL * feedback, 1);
+    samplesL[0] = min(spl1 + bufferValueR * feedback, 1);
+) : (
+    samplesL[0] = min(spl0 + bufferValueL * feedback, 1);
+    samplesR[0] = min(spl1 + bufferValueR * feedback, 1);
+);
+
+(bufferPosL += 1) >= numSamplesL ? bufferPosL = 0;
+(bufferPosR += 1) >= bufferSize + numSamplesR ? bufferPosR = bufferSize + 0;
+
+spl0 = spl0 + bufferValueL * mix;
+spl1 = spl1 + bufferValueR * mix;

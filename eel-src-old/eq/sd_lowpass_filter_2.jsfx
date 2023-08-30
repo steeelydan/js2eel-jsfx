@@ -1,0 +1,27 @@
+/*
+    Simplest design, only useful for learning
+    https://www.youtube.com/watch?v=WR8PtyfLAVc
+    Inifinite Impulse Response filter (IIRF)
+*/
+
+desc:sd_lowpass_filter_2
+
+
+slider1: 1 <0, 1, 0.01> Previous vs. current
+
+@slider
+currVsPrev = (slider1 * 2) -1;
+
+@sample
+
+channel = -1;
+
+loop(num_ch, channel +=1;
+  currTerm = spl(channel) * (1 + currVsPrev);
+  prevTerm = prev1[channel] * (1 - currVsPrev);
+  currAvg = (currTerm + prevTerm) / 2;
+
+  spl(channel) = currAvg;
+  prev2[channel] = prev1[channel];
+  prev1[channel] = spl(channel);
+);

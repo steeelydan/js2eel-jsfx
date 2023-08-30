@@ -1,0 +1,56 @@
+/*
+v0.0.1
+Adapted from https://wiki.cockos.com/wiki/index.php/1st_Ever_Jesusonic_Tutorial
+*/
+
+desc:sd_drum_machine
+
+
+@init
+maxPoly = 2;
+poly = 0;
+
+@block
+
+while (midirecv(offset, msg1, msg2, msg3) ?
+ (
+  status = msg1&240; // get the status, i.e. e.g. 8*19 for note off, 9*19 for note on
+
+    (status == 8*16 || status == 9*16)
+    ?
+    (
+      status == 8*16
+      ?
+      (
+        // Note off
+        poly -= 1;
+        vol = 0;
+      )
+      :
+      (
+        // Note on
+        poly += 1;
+        note = msg2; // extract the note# (ranging from 0-127)
+        vol = msg3 / 127; // extract velocity (ranging from 0 - 127) and divide through 127 to give it a range from 0-1
+        freq = 440 * 2 ^((note - 69) / 12); // convert from MIDI note to frequency
+        waveSpeed = (2 * $pi * freq) / srate; // calculate waveSpeed
+        wavePos = 0; // reset wavePos
+      )
+    )
+    :
+    (
+      midisend(offset, msg1, msg2, msg3); // pass other MIDI events
+    );
+ );
+);
+
+
+@sample
+
+// counter = -1;
+
+// loop(maxPoly, counter +=1;
+  spl0 += sin(wavePos) * vol;
+  spl1 += sin(wavePos) * vol;
+  (wavePos += waveSpeed) >= 2 * $pi ? wavePos -= 2 * $pi;
+// )

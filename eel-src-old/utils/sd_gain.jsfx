@@ -1,0 +1,14 @@
+/*
+v1.0.0
+*/
+
+desc:sd_gain
+
+slider1:gain=0 < -24 , 24 , 0.1 >Gain [dB]
+
+@slider
+target = 10 ^ ( gain / 20 );
+
+@sample
+spl0 *= target;
+spl1 *= target;

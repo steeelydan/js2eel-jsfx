@@ -1,0 +1,18 @@
+/*
+v1.0.0
+Pirkle p. 551
+*/
+
+desc:sd_bitcrusher_2
+
+
+slider1:bits=4<1,16,1>Bits
+slider2:outputDb=0<-96,0,1>Output (dB)
+
+@slider
+quantizationLevel = 2 / (2 ^ bits - 1);
+output = 10 ^ (outputDb / 20);
+
+@sample
+spl0 = quantizationLevel * floor(spl0 / quantizationLevel) * output;
+spl1 = quantizationLevel * floor(spl1 / quantizationLevel) * output;

@@ -1,0 +1,34 @@
+// Pirkle p. 352
+
+desc: sd_pirkle_sine
+
+@init
+
+gain = 0.1;
+
+B = 4.0 / $pi;
+C = -4.0 / ($pi * $pi);
+P = 0.225;
+
+modCounter = 0.0;
+oscFreq = 1;
+phaseInc = oscFreq / srate;
+
+@sample
+
+phaseInc > 0 && modCounter >= 1 ? (
+    modCounter -= 1.0;
+);
+
+phaseInc < 0 && modCounter <= 0 ? (
+    modCounter += 1;
+);
+
+angle = modCounter * 2 * $pi - $pi;
+
+y = B * -angle + C * -angle * abs(-angle);
+y = P * (y * abs(y) - y) + y;
+
+spl0 = y * gain;
+
+modCounter += phaseInc;

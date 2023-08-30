@@ -1,0 +1,502 @@
+/*
+v1.0.0
+
+Based on the W3 specs for EQs: https://www.w3.org/TR/audio-eq-cookbook/
+Based on the tutorial: https://www.youtube.com/watch?v=WR8PtyfLAVc
+*/
+
+desc:sd_4band_eq
+
+slider1:hpFreq=20<20, 1050, 1>HPF
+slider2:hpQ=0.5<0.1, 7, 0.01>Q
+
+slider4:lpFreq=22000<50, 22000, 1>LPF
+slider5:lpQ=0.5<0.1, 7, 0.01>Q
+
+slider7:hiType=0<0,1,1{Shelf,Peak}>High Type
+slider8:hiFreq=8000 <20, 20000, 1>Freq
+slider9:hiQ=0.5 <0.1, 7, 0.01>Q
+slider10:hiGain=0 <-15, 15, 0.01>Gain (dB)
+
+slider12:hmFreq=3000<600,7000,1>Hi Mid Freq
+slider13:hmQ=0.5<0.1, 7, 0.01>Q
+slider14:hmGain=0<-15, 15, 0.01>Gain (dB)
+
+slider16:lmFreq=1000<200,2500,1>Lo Mid Freq
+slider17:lmQ=0.5<0.1, 7, 0.01>Q
+slider18:lmGain=0<-15, 15, 0.01>Gain (dB)
+
+slider20:loType=0<0,1,1{Shelf,Peak}>Low Type
+slider21:loFreq=200<30,450,1>Freq
+slider22:loQ=0.5<0.1, 7, 0.01>Q
+slider23:loGain=0<-15, 15, 0.01>Gain (dB)
+
+slider50:outputGainDb=0<-15, 15, 0.01>Output Gain (dB)
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+
+ext_tail_size = -1;
+
+function setLpCoefs()
+  local(omega, sinOmega, cosOmega, alpha, lpA0, lpA1, lpA2, lpB0, lpB1, lpB2)
+  global(srate, lpFreq, lpQ, lpA1x, lpA2x, lpB0x, lpB1x, lpB2x)
+  (
+    omega = 2 * $pi * lpFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * lpQ);
+
+    lpA0 = 1 + alpha;
+    lpA1 = -2 * cosOmega;
+    lpA2 = 1 - alpha;
+    lpB0 = (1 - cosOmega) / 2;
+    lpB1 = 1 - cosOmega;
+    lpB2 = (1 - cosOmega) / 2;
+
+    lpA1x = lpA1 / lpA0;
+    lpA2x = lpA2 / lpA0;
+    lpB0x = lpB0 / lpA0;
+    lpB1x = lpB1 / lpA0;
+    lpB2x = lpB2 / lpA0;
+  );
+
+function setLsCoefs()
+  local(A, omega, sinOmega, cosOmega, alpha, lsA0, lsA1, lsA2, lsB0, lsB1, lsB2)
+  global(srate, loGain, loFreq, loQ, lsA1x, lsA2x, lsB0x, lsB1x, lsB2x)
+  (
+    A = 10 ^ (loGain / 40);
+    omega = 2 * $pi * loFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * loQ);
+
+    lsA0 = (A + 1) + (A - 1) * cosOmega + 2 * sqrt(A) * alpha;
+    lsA1 = -2 * ((A - 1) + (A + 1) * cosOmega);
+    lsA2 = (A + 1) + (A - 1) * cosOmega - 2 * sqrt(A) * alpha;
+    lsB0 = A * ((A + 1) - (A - 1) * cosOmega + 2 * sqrt(A) * alpha);
+    lsB1 = 2 * A * ((A - 1) - (A + 1) * cosOmega);
+    lsB2 = A * ((A + 1) - (A - 1) * cosOmega - 2 * sqrt(A) * alpha);
+
+    lsA1x = lsA1 / lsA0;
+    lsA2x = lsA2 / lsA0;
+    lsB0x = lsB0 / lsA0;
+    lsB1x = lsB1 / lsA0;
+    lsB2x = lsB2 / lsA0;
+  );
+
+function setLoCoefs()
+  local(A, omega, sinOmega, cosOmega, alpha, loA0, loA1, loA2, loB0, loB1, loB2)
+  global(srate, loGain, loFreq, loQ, loA1x, loA2x, loB0x, loB1x, loB2x)
+  (
+    A = 10 ^ (loGain / 40);
+    omega = 2 * $pi * loFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * loQ);
+
+    loA0 = 1 + alpha / A;
+    loA1 = -2 * cosOmega;
+    loA2 = 1 - alpha / A;
+    loB0 = 1 + alpha * A;
+    loB1 = -2 * cosOmega;
+    loB2 = 1 - alpha * A;
+
+    loA1x = loA1 / loA0;
+    loA2x = loA2 / loA0;
+    loB0x = loB0 / loA0;
+    loB1x = loB1 / loA0;
+    loB2x = loB2 / loA0;
+  );
+
+function setLmCoefs()
+  local(A, omega, sinOmega, cosOmega, alpha, lmA0, lmA1, lmA2, lmB0, lmB1, lmB2)
+  global(srate, lmGain, lmFreq, lmQ, lmA1x, lmA2x, lmB0x, lmB1x, lmB2x)
+  (
+    A = 10 ^ (lmGain / 40);
+    omega = 2 * $pi * lmFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * lmQ);
+
+    lmA0 = 1 + alpha / A;
+    lmA1 = -2 * cosOmega;
+    lmA2 = 1 - alpha / A;
+    lmB0 = 1 + alpha * A;
+    lmB1 = -2 * cosOmega;
+    lmB2 = 1 - alpha * A;
+
+    lmA1x = lmA1 / lmA0;
+    lmA2x = lmA2 / lmA0;
+    lmB0x = lmB0 / lmA0;
+    lmB1x = lmB1 / lmA0;
+    lmB2x = lmB2 / lmA0;
+  );
+
+function setHmCoefs()
+  local(A, omega, sinOmega, cosOmega, alpha, hmA0, hmA1, hmA2, hmB0, hmB1, hmB2)
+  global(srate, hmGain, hmFreq, hmQ, hmA1x, hmA2x, hmB0x, hmB1x, hmB2x)
+  (
+    A = 10 ^ (hmGain / 40);
+    omega = 2 * $pi * hmFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * hmQ);
+
+    hmA0 = 1 + alpha / A;
+    hmA1 = -2 * cosOmega;
+    hmA2 = 1 - alpha / A;
+    hmB0 = 1 + alpha * A;
+    hmB1 = -2 * cosOmega;
+    hmB2 = 1 - alpha * A;
+
+    hmA1x = hmA1 / hmA0;
+    hmA2x = hmA2 / hmA0;
+    hmB0x = hmB0 / hmA0;
+    hmB1x = hmB1 / hmA0;
+    hmB2x = hmB2 / hmA0;
+  );
+
+function setHiCoefs()
+  local(A, omega, sinOmega, cosOmega, alpha, hiA0, hiA1, hiA2, hiB0, hiB1, hiB2)
+  global(srate, hiGain, hiFreq, hiQ, hiA1x, hiA2x, hiB0x, hiB1x, hiB2x)
+  (
+    A = 10 ^ (hiGain / 40);
+    omega = 2 * $pi * hiFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * hiQ);
+
+    hiA0 = 1 + alpha / A;
+    hiA1 = -2 * cosOmega;
+    hiA2 = 1 - alpha / A;
+    hiB0 = 1 + alpha * A;
+    hiB1 = -2 * cosOmega;
+    hiB2 = 1 - alpha * A;
+
+    hiA1x = hiA1 / hiA0;
+    hiA2x = hiA2 / hiA0;
+    hiB0x = hiB0 / hiA0;
+    hiB1x = hiB1 / hiA0;
+    hiB2x = hiB2 / hiA0;
+  );
+
+function setHsCoefs()
+  local(A, omega, sinOmega, cosOmega, alpha, hsA0, hsA1, hsA2, hsB0, hsB1, hsB2)
+  global(srate, hiGain, hiFreq, hiQ, hsA1x, hsA2x, hsB0x, hsB1x, hsB2x)
+  (
+    A = 10 ^ (hiGain / 40);
+    omega = 2 * $pi * hiFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * hiQ);
+
+    hsA0 = (A + 1) - (A - 1) * cosOmega + 2 * sqrt(A) * alpha;
+    hsA1 = 2 * ((A - 1) - (A + 1) * cosOmega);
+    hsA2 = (A + 1) - (A - 1) * cosOmega - 2 * sqrt(A) * alpha;
+    hsB0 = A * ((A + 1) + (A - 1) * cosOmega + 2 * sqrt(A) * alpha);
+    hsB1 = -2 * A * ((A - 1) + (A + 1) * cosOmega);
+    hsB2 = A * ((A + 1) + (A - 1) * cosOmega - 2 * sqrt(A) * alpha);
+
+    hsA1x = hsA1 / hsA0;
+    hsA2x = hsA2 / hsA0;
+    hsB0x = hsB0 / hsA0;
+    hsB1x = hsB1 / hsA0;
+    hsB2x = hsB2 / hsA0;
+  );
+
+function setHpCoefs()
+  local(omega, sinOmega, cosOmega, alpha, hpA0, hpA1, hpA2, hpB0, hpB1, hpB2)
+  global(srate, hpFreq, hpQ, hpA1x, hpA2x, hpB0x, hpB1x, hpB2x)
+  (
+    omega = 2 * $pi * hpFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * hpQ);
+
+    hpA0 = 1 + alpha;
+    hpA1 = -2 * cosOmega;
+    hpA2 = 1 - alpha;
+    hpB0 = (1 + cosOmega) / 2;
+    hpB1 = - (1 + cosOmega);
+    hpB2 = (1 + cosOmega) / 2;
+
+    hpA1x = hpA1 / hpA0;
+    hpA2x = hpA2 / hpA0;
+    hpB0x = hpB0 / hpA0;
+    hpB1x = hpB1 / hpA0;
+    hpB2x = hpB2 / hpA0;
+  );
+
+
+function setCoefs()
+  (
+    setLpCoefs();
+    setLsCoefs();
+    setLoCoefs();
+    setLmCoefs();
+    setHmCoefs();
+    setHiCoefs();
+    setHsCoefs();
+    setHpCoefs();
+  );
+
+setCoefs();
+
+@slider
+
+setCoefs();
+
+outputGain = 10 ^ ( outputGainDb / 20 );
+
+@sample
+
+valueL = spl0;
+valueR = spl1;
+
+lpFreq < 22000 ? (
+  lpXL = valueL;
+  lpYL = lpB0x * lpXL
+    + lpB1x * lpX1L
+    + lpB2x * lpX2L
+    - lpA1x * lpY1L
+    - lpA2x * lpY2L;
+
+  lpY2L = lpY1L;
+  lpY1L = lpYL;
+  lpX2L = lpX1L;
+  lpX1L = lpXL;
+
+  valueL = lpYL;
+
+  lpXR = valueR;
+  lpYR = lpB0x * lpXR
+    + lpB1x * lpX1R
+    + lpB2x * lpX2R
+    - lpA1x * lpY1R
+    - lpA2x * lpY2R;
+
+  lpY2R = lpY1R;
+  lpY1R = lpYR;
+  lpX2R = lpX1R;
+  lpX1R = lpXR;
+
+  valueR = lpYR;
+);
+
+hiGain != 0 ? (
+  hiType == 0 ? (
+    hsXL = valueL;
+    hsYL = hsB0x * hsXL
+      + hsB1x * hsX1L
+      + hsB2x * hsX2L
+      - hsA1x * hsY1L
+      - hsA2x * hsY2L;
+
+    hsY2L = hsY1L;
+    hsY1L = hsYL;
+    hsX2L = hsX1L;
+    hsX1L = hsXL;
+
+    valueL = hsYL;
+
+    hsXR = valueR;
+    hsYR = hsB0x * hsXR
+      + hsB1x * hsX1R
+      + hsB2x * hsX2R
+      - hsA1x * hsY1R
+      - hsA2x * hsY2R;
+
+    hsY2R = hsY1R;
+    hsY1R = hsYR;
+    hsX2R = hsX1R;
+    hsX1R = hsXR;
+
+    valueR = hsYR;
+  ) : (
+    hiXL = valueL;
+    hiYL = hiB0x * hiXL
+      + hiB1x * hiX1L
+      + hiB2x * hiX2L
+      - hiA1x * hiY1L
+      - hiA2x * hiY2L;
+
+    hiY2L = hiY1L;
+    hiY1L = hiYL;
+    hiX2L = hiX1L;
+    hiX1L = hiXL;
+
+    valueL = hiYL;
+
+    hiXR = valueR;
+    hiYR = hiB0x * hiXR
+      + hiB1x * hiX1R
+      + hiB2x * hiX2R
+      - hiA1x * hiY1R
+      - hiA2x * hiY2R;
+
+    hiY2R = hiY1R;
+    hiY1R = hiYR;
+    hiX2R = hiX1R;
+    hiX1R = hiXR;
+
+    valueR = hiYR;
+  )
+);
+
+hmGain != 0 ? (
+  hmXL = valueL;
+  hmYL = hmB0x * hmXL
+    + hmB1x * hmX1L
+    + hmB2x * hmX2L
+    - hmA1x * hmY1L
+    - hmA2x * hmY2L;
+
+  hmY2L = hmY1L;
+  hmY1L = hmYL;
+  hmX2L = hmX1L;
+  hmX1L = hmXL;
+
+  valueL = hmYL;
+
+  hmXR = valueR;
+  hmYR = hmB0x * hmXR
+    + hmB1x * hmX1R
+    + hmB2x * hmX2R
+    - hmA1x * hmY1R
+    - hmA2x * hmY2R;
+
+  hmY2R = hmY1R;
+  hmY1R = hmYR;
+  hmX2R = hmX1R;
+  hmX1R = hmXR;
+
+  valueR = hmYR;
+);
+
+lmGain != 0 ? (
+  lmXL = valueL;
+  lmYL = lmB0x * lmXL
+    + lmB1x * lmX1L
+    + lmB2x * lmX2L
+    - lmA1x * lmY1L
+    - lmA2x * lmY2L;
+
+  lmY2L = lmY1L;
+  lmY1L = lmYL;
+  lmX2L = lmX1L;
+  lmX1L = lmXL;
+
+  valueL = lmYL;
+
+  lmXR = valueR;
+  lmYR = lmB0x * lmXR
+    + lmB1x * lmX1R
+    + lmB2x * lmX2R
+    - lmA1x * lmY1R
+    - lmA2x * lmY2R;
+
+  lmY2R = lmY1R;
+  lmY1R = lmYR;
+  lmX2R = lmX1R;
+  lmX1R = lmXR;
+
+  valueR = lmYR;
+);
+
+loGain != 0 ? (
+  loType == 0 ? (
+    lsXL = valueL;
+    lsYL = lsB0x * lsXL
+      + lsB1x * lsX1L
+      + lsB2x * lsX2L
+      - lsA1x * lsY1L
+      - lsA2x * lsY2L;
+
+    lsY2L = lsY1L;
+    lsY1L = lsYL;
+    lsX2L = lsX1L;
+    lsX1L = lsXL;
+
+    valueL = lsYL;
+
+    lsXR = valueR;
+    lsYR = lsB0x * lsXR
+      + lsB1x * lsX1R
+      + lsB2x * lsX2R
+      - lsA1x * lsY1R
+      - lsA2x * lsY2R;
+
+    lsY2R = lsY1R;
+    lsY1R = lsYR;
+    lsX2R = lsX1R;
+    lsX1R = lsXR;
+
+    valueR = lsYR;
+  ) : (
+    loXL = valueL;
+    loYL = loB0x * loXL
+      + loB1x * loX1L
+      + loB2x * loX2L
+      - loA1x * loY1L
+      - loA2x * loY2L;
+
+    loY2L = loY1L;
+    loY1L = loYL;
+    loX2L = loX1L;
+    loX1L = loXL;
+
+    valueL = loYL;
+
+    loXR = valueR;
+    loYR = loB0x * loXR
+      + loB1x * loX1R
+      + loB2x * loX2R
+      - loA1x * loY1R
+      - loA2x * loY2R;
+
+    loY2R = loY1R;
+    loY1R = loYR;
+    loX2R = loX1R;
+    loX1R = loXR;
+
+    valueR = loYR;
+  )
+);
+
+hpFreq > 20 ? (
+  hpXL = valueL;
+  hpYL = hpB0x * hpXL
+    + hpB1x * hpX1L
+    + hpB2x * hpX2L
+    - hpA1x * hpY1L
+    - hpA2x * hpY2L;
+
+  hpY2L = hpY1L;
+  hpY1L = hpYL;
+  hpX2L = hpX1L;
+  hpX1L = hpXL;
+
+  valueL = hpYL;
+
+  hpXR = valueR;
+  hpYR = hpB0x * hpXR
+    + hpB1x * hpX1R
+    + hpB2x * hpX2R
+    - hpA1x * hpY1R
+    - hpA2x * hpY2R;
+
+  hpY2R = hpY1R;
+  hpY1R = hpYR;
+  hpX2R = hpX1R;
+  hpX1R = hpXR;
+
+  valueR = hpYR;
+);
+
+spl0 = valueL * outputGain;
+spl1 = valueR * outputGain;

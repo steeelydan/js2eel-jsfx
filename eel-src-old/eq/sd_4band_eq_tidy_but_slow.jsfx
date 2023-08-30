@@ -1,0 +1,256 @@
+desc:sd_4band_eq_tidy_but_slow
+
+// Based on the W3 specs for EQs: https://www.w3.org/TR/audio-eq-cookbook/
+// Based on the tutorial: https://www.youtube.com/watch?v=WR8PtyfLAVc
+
+slider1:lpFreq=22000<3000, 22000, 1>LP Freq
+slider2:lpQ=0.5<0.1, 7, 0.01>Q
+
+slider4:highType=0<0,1,1{Shelf,Peak}>High Type
+slider5:highFreq=8000 <20, 20000, 1>Freq
+slider6:highQ=0.5 <0.1, 7, 0.01>Q
+slider7:highGain=0 <-15, 15, 0.01>Gain (dB)
+
+slider9:hiMidFreq=3000<600,7000,1>Hi Mid Freq
+slider10:hiMidQ=0.5<0.1, 7, 0.01>Q
+slider11:hiMidGain=0<-15, 15, 0.01>Gain (dB)
+
+slider13:loMidFreq=1000<200,2500,1>Lo Mid Freq
+slider14:loMidQ=0.5<0.1, 7, 0.01>Q
+slider15:loMidGain=0<-15, 15, 0.01>Gain (dB)
+
+slider17:lowType=0<0,1,1{Shelf,Peak}>Low Type
+slider18:lowFreq=200<30,450,1>Freq
+slider19:lowQ=0.5<0.1, 7, 0.01>Q
+slider20:lowGain=0<-15, 15, 0.01>Gain (dB)
+
+slider22:hpFreq=20<20, 1050, 1>HP Freq
+slider23:hpQ=0.5<0.1, 7, 0.01>Q
+
+slider50:outputGainDb=0<-15, 15, 0.01>Output Gain (dB)
+
+@init
+
+channels = 2; // FIXME can we make use of num_ch?
+
+// Space to save former sample values
+function createStereoBuffer(offset)
+  (
+    this.y = offset + 0;
+    this.y1 = offset + channels;
+    this.y2 = offset + channels * 2;
+    this.x = offset + channels * 3;
+    this.x1 = offset + channels * 4;
+    this.x2 = offset + channels * 5;
+  );
+
+function setHpCoefs()
+  local(omega sinOmega cosOmega alpha)
+  (
+    omega = 2 * $pi * hpFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * hpQ);
+
+    this.a0 = 1 + alpha;
+    this.a1 = -2 * cosOmega;
+    this.a2 = 1 - alpha;
+    this.b0 = (1 + cosOmega) / 2;
+    this.b1 = - (1 + cosOmega);
+    this.b2 = (1 + cosOmega) / 2;
+
+    this.a1x = this.a1 / this.a0;
+    this.a2x = this.a2 / this.a0;
+    this.b0x = this.b0 / this.a0;
+    this.b1x = this.b1 / this.a0;
+    this.b2x = this.b2 / this.a0;
+  );
+
+function setLpCoefs()
+  local(omega sinOmega cosOmega alpha)
+  (
+    omega = 2 * $pi * lpFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * lpQ);
+
+    this.a0 = 1 + alpha;
+    this.a1 = -2 * cosOmega;
+    this.a2 = 1 - alpha;
+    this.b0 = (1 - cosOmega) / 2;
+    this.b1 = 1 - cosOmega;
+    this.b2 = (1 - cosOmega) / 2;
+
+    this.a1x = this.a1 / this.a0;
+    this.a2x = this.a2 / this.a0;
+    this.b0x = this.b0 / this.a0;
+    this.b1x = this.b1 / this.a0;
+    this.b2x = this.b2 / this.a0;
+  );
+
+function setLowShelfCoefs()
+  local(A omega sinOmega cosOmega alpha)
+  (
+    A = 10 ^ (lowGain / 40);
+    omega = 2 * $pi * lowFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * lowQ);
+
+    this.a0 = (A + 1) + (A - 1) * cosOmega + 2 * sqrt(A) * alpha;
+    this.a1 = -2 * ((A - 1) + (A + 1) * cosOmega);
+    this.a2 = (A + 1) + (A - 1) * cosOmega - 2 * sqrt(A) * alpha;
+    this.b0 = A * ((A + 1) - (A - 1) * cosOmega + 2 * sqrt(A) * alpha);
+    this.b1 = 2 * A * ((A - 1) - (A + 1) * cosOmega);
+    this.b2 = A * ((A + 1) - (A - 1) * cosOmega - 2 * sqrt(A) * alpha);
+
+    this.a1x = this.a1 / this.a0;
+    this.a2x = this.a2 / this.a0;
+    this.b0x = this.b0 / this.a0;
+    this.b1x = this.b1 / this.a0;
+    this.b2x = this.b2 / this.a0;
+  );
+
+function setPeakCoefs(freq, gain, q)
+  local(A omega sinOmega cosOmega alpha)
+  (
+    A = 10 ^ (gain / 40);
+    omega = 2 * $pi * freq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * q);
+
+    this.a0 = 1 + alpha / A;
+    this.a1 = -2 * cosOmega;
+    this.a2 = 1 - alpha / A;
+    this.b0 = 1 + alpha * A;
+    this.b1 = -2 * cosOmega;
+    this.b2 = 1 - alpha * A;
+
+    this.a1x = this.a1 / this.a0;
+    this.a2x = this.a2 / this.a0;
+    this.b0x = this.b0 / this.a0;
+    this.b1x = this.b1 / this.a0;
+    this.b2x = this.b2 / this.a0;
+  );
+
+function setHighShelfCoefs()
+  local(A omega sinOmega cosOmega alpha)
+  (
+    A = 10 ^ (highGain / 40);
+    omega = 2 * $pi * highFreq / srate;
+    sinOmega = sin(omega);
+    cosOmega = cos(omega);
+    alpha = sinOmega / (2 * highQ);
+
+    this.a0 = (A + 1) - (A - 1) * cosOmega + 2 * sqrt(A) * alpha;
+    this.a1 = 2 * ((A - 1) - (A + 1) * cosOmega);
+    this.a2 = (A + 1) - (A - 1) * cosOmega - 2 * sqrt(A) * alpha;
+    this.b0 = A * ((A + 1) + (A - 1) * cosOmega + 2 * sqrt(A) * alpha);
+    this.b1 = -2 * A * ((A - 1) + (A + 1) * cosOmega);
+    this.b2 = A * ((A + 1) + (A - 1) * cosOmega - 2 * sqrt(A) * alpha);
+
+    this.a1x = this.a1 / this.a0;
+    this.a2x = this.a2 / this.a0;
+    this.b0x = this.b0 / this.a0;
+    this.b1x = this.b1 / this.a0;
+    this.b2x = this.b2 / this.a0;
+  );
+
+function setCoefs()
+  (
+    hpCoefs.setHpCoefs();
+    lpCoefs.setLpCoefs();
+    lowShelfCoefs.setLowShelfCoefs();
+    lowCoefs.setPeakCoefs(lowFreq, lowGain, lowQ);
+    loMidCoefs.setPeakCoefs(loMidFreq, loMidGain, loMidQ);
+    hiMidCoefs.setPeakCoefs(hiMidFreq, hiMidGain, hiMidQ);
+    highShelfCoefs.setHighShelfCoefs();
+    highCoefs.setPeakCoefs(highFreq, highGain, highQ);
+  );
+
+function processSample(
+  prevValue, ch,
+  buffer*,
+  coefs*
+)
+  (
+    buffer.y2[ch] = buffer.y1[ch];
+    buffer.y1[ch] = buffer.y[ch];
+
+    buffer.y[ch] = coefs.b0x * buffer.x[ch]
+      + coefs.b1x * buffer.x1[ch]
+      + coefs.b2x * buffer.x2[ch]
+      - coefs.a1x * buffer.y1[ch]
+      - coefs.a2x * buffer.y2[ch];
+
+    buffer.x2[ch] = buffer.x1[ch];
+    buffer.x1[ch] = buffer.x[ch];
+    buffer.x[ch] = prevValue;
+
+    buffer.y[ch];
+  );
+
+bufferSize = 6 * channels;
+
+hpBuffer.createStereoBuffer(0);
+lpBuffer.createStereoBuffer(bufferSize * 1);
+lowShelfBuffer.createStereoBuffer(bufferSize * 2);
+lowBuffer.createStereoBuffer(bufferSize * 3);
+loMidBuffer.createStereoBuffer(bufferSize * 4);
+hiMidBuffer.createStereoBuffer(bufferSize * 5);
+highShelfBuffer.createStereoBuffer(bufferSize * 6);
+highBuffer.createStereoBuffer(bufferSize * 7);
+
+setCoefs();
+
+@slider
+
+setCoefs();
+
+outputGain = 10 ^ ( outputGainDb / 20 );
+
+@sample
+
+ch = -1;
+
+loop(channels,
+ch += 1;
+
+    value = spl(ch);
+
+    lpFreq < 22000 ? (
+      value = processSample(value, ch, lpBuffer, lpCoefs);
+    );
+
+    highGain != 0 ? (
+      highType == 0 ? (
+        value = processSample(value, ch, highShelfBuffer, highShelfCoefs);
+      ) : (
+        value = processSample(value, ch, highBuffer, highCoefs);
+      )
+    );
+
+    hiMidGain != 0 ? (
+        value = processSample(value, ch, hiMidBuffer, hiMidCoefs);
+    );
+
+    loMidGain != 0 ? (
+        value = processSample(value, ch, loMidBuffer, loMidCoefs);
+    );
+
+    lowGain != 0 ? (
+      lowType == 0 ? (
+        value = processSample(value, ch, lowShelfBuffer, lowShelfCoefs);
+      ) : (
+        value = processSample(value, ch, lowBuffer, lowCoefs);
+      )
+    );
+
+    hpFreq > 20 ? (
+      value = processSample(value, ch, hpBuffer, hpCoefs);
+    );
+
+    spl(ch) = value * outputGain;
+);
+

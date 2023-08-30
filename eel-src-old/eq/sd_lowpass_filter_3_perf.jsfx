@@ -1,0 +1,54 @@
+/*
+  For a practical implementation see sd_4band_eq
+  Tutorial: https://www.youtube.com/watch?v=WR8PtyfLAVc
+  Specification: https://www.w3.org/TR/audio-eq-cookbook/
+*/
+
+desc:sd_lowpass_filter_3_perf
+
+slider1:freq=300 <20, 20000, 1>Freq [Hz]
+slider2:q=1 <0.1, 7, 0.01>Q
+
+@slider
+
+omega = 2 * $pi * freq / srate;
+sinOmega = sin(omega);
+cosOmega = cos(omega);
+alpha = sinOmega / (2 * q);
+
+b0 = (1 - cosOmega) / 2;
+b1 = 1 - cosOmega;
+b2 = (1 - cosOmega) / 2;
+a0 = 1 + alpha;
+a1 = -2 * cosOmega;
+a2 = 1 - alpha;
+
+@sample
+
+y_n_2_l = y_n_1_l;
+y_n_1_l = y_n_l;
+y_n_l = (b0 / a0) * x_n_l
+  + (b1 / a0) * x_n_1_l
+  + (b2 / a0) * x_n_2_l
+  - (a1 / a0) * y_n_1_l
+  - (a2 / a0) * y_n_2_l;
+
+x_n_2_l = x_n_1_l;
+x_n_1_l = x_n_l;
+x_n_l = spl0;
+
+spl0 = y_n_l;
+
+y_n_2_r = y_n_1_r;
+y_n_1_r = y_n_r;
+y_n_r = (b0 / a0) * x_n_r
+  + (b1 / a0) * x_n_1_r
+  + (b2 / a0) * x_n_2_r
+  - (a1 / a0) * y_n_1_r
+  - (a2 / a0) * y_n_2_r;
+
+x_n_2_r = x_n_1_r;
+x_n_1_r = x_n_r;
+x_n_r = spl1;
+
+spl1 = y_n_r;

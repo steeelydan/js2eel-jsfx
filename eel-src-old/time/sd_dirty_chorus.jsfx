@@ -1,0 +1,54 @@
+/*
+v1.0.0
+This is totally wrong but quite nice.
+*/
+
+desc:sd_dirty_chorus
+
+slider1:depth=1<0,5,0.01>Depth
+slider2:freq=0.2<0.1,6,0.01>Freq
+
+in_pin:Left In
+in_pin:Right In
+out_pin:Left Out
+out_pin:Right Out
+
+@init
+
+numSamplesL = numSamplesR = 2000;
+bufferSize = 6000;
+bufferL = 0;
+bufferR = bufferSize;
+
+@slider
+memset(bufferL, 0, bufferSize);
+movement = 2 * $pi * freq / srate;
+
+@sample
+
+modValueL = (sin(pos) * depth) / 100;
+numSamplesL += modValueL;
+
+readIndexL = writeIndex - floor(numSamplesL);
+readIndexL < 0 ? readIndexL += bufferSize;
+
+modValueR = (cos(pos) * depth) / 100;
+numSamplesR += modValueR;
+
+readIndexR = writeIndex - floor(numSamplesR);
+readIndexR < 0 ? readIndexR += bufferSize;
+
+bufferValueL = bufferL[readIndexL];
+bufferValueR = bufferR[readIndexR];
+
+writeIndex += 1;
+writeIndex >= bufferSize ? writeIndex = 0;
+
+bufferL[writeIndex] = spl0;
+bufferR[writeIndex] = spl1;
+
+spl0 = spl0 + bufferValueL;
+spl1 = spl1 + bufferValueR;
+
+pos = pos + movement;
+(pos >= 2 * $pi) ? pos -= 2 * $pi;

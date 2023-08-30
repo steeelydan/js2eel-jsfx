@@ -1,0 +1,41 @@
+/*
+v1.0.0
+
+Uses double index method proposed by Pirkle (p. 387)
+*/
+
+desc:sd_simple_delay
+
+slider1:lengthMs=120<0,2000,1>Delay (ms)
+slider2:mixDb=-6<-120,6,1>Mix (dB)
+
+in_pin:Left In
+in_pin:Right In
+out_pin:Left Out
+out_pin:Right Out
+
+@init
+
+bufferSize = 400000;
+buffer = 0;
+
+@slider
+numSamples = lengthMs * srate / 1000;
+mix = 2 ^ ( mixDb / 6 );
+
+@sample
+
+readIndex = writeIndex - numSamples;
+readIndex < 0 ? readIndex += bufferSize;
+
+bufferValue = buffer[readIndex];
+
+sample = (spl0 + spl1) / 2;
+
+writeIndex += 1;
+writeIndex >= bufferSize ? writeIndex = 0;
+
+buffer[writeIndex] = sample;
+
+spl0 = sample + bufferValue * mix;
+spl1 = sample + bufferValue * mix;

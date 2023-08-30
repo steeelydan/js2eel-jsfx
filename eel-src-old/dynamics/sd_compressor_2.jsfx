@@ -1,0 +1,90 @@
+/*
+v1.0.0
+
+Adapted from chkhld's Track Comp (https://github.com/chkhld/jsfx/blob/master/plugins/track_comp.jsfx)
+
+- Full-wave RMS detector
+- 100% linked channel detection
+- Log domain ballistics
+
+cf. Reiss, J. (2011): Under the Hood of a Dynamic Range Compressor,
+Pirkle, W. (2019): Designing Audio Effects Plugins in C++, p. 357-363
+*/
+
+desc: sd_compressor_2
+
+in_pin:Input L
+in_pin:Input R
+out_pin:Output L
+out_pin:Output R
+
+slider3: thresholdDb=0<-60, 0, 0.01>Threshold (dB)
+slider4: ratioSetting=4<0.1, 20, 0.1>Ratio (x:1)
+slider5: attackMs=10<0.001, 100, 0.01>Attack (ms)
+slider6: releaseMs=200<20, 1500, 0.01>Release (ms)
+slider8: rmsWindowMs=5<0,150,0.01>RMS Window (ms)
+slider14:outputGainDb=0<-12, 12, 0.01>Output Gain (dB)
+
+@init
+
+// https://forum.cockos.com/showpost.php?p=2518899&postcount=11
+LOG_CONSTANT = 8.6858896380650365530225783783321;
+ANALOG_TIME_CONSTANT = -1; // ~ ln(0.368), Pirkle p. 360
+
+
+@slider
+
+coeffAtt = exp(ANALOG_TIME_CONSTANT / (attackMs * 0.001  * srate)); // TC / e ^ (f * time * 0.001), Pirkle p. 361
+coeffRel = exp(ANALOG_TIME_CONSTANT / (releaseMs * 0.001 * srate));
+coeffRms = rmsWindowMs > 0 ? exp(ANALOG_TIME_CONSTANT / (rmsWindowMs * 0.001 * srate)) : 0;
+ratio = 1 / ratioSetting;
+slope = 1 - ratio;
+
+outputGain = 10 ^ (outputGainDb / 20);
+
+
+@sample
+
+// Detector (RMS), channels 100% linked
+key = sqrt(sqr(abs(spl0)) + sqr(abs(spl1)));
+
+coeffRms > 0 ? (
+  lastRmsEnv = key * key + coeffRms * (lastRmsEnv - key * key);
+  key = sqrt(lastRmsEnv);
+) : (
+  lastRmsEnv = key * key;
+);
+
+
+// Left
+
+keyDbL = LOG_CONSTANT * log(key);
+changeDbL = lastEnvDbL - keyDbL;
+
+keyDbL > lastEnvDbL ? (
+  lastEnvDbL = keyDbL + coeffAtt * changeDbL;
+) : (
+  lastEnvDbL = keyDbL + coeffRel * changeDbL;
+);
+
+controlVectorDbL = min(0.0, slope * (thresholdDb - lastEnvDbL));
+controlVectorL = 10 ^ (controlVectorDbL / 20);
+
+// Right
+
+keyDbR = LOG_CONSTANT * log(key);
+changeDbR = lastEnvDbR - keyDbR;
+
+keyDbR > lastEnvDbR ? (
+  lastEnvDbR = keyDbR + coeffAtt * changeDbR;
+) : (
+  lastEnvDbR = keyDbR + coeffRel * changeDbR;
+);
+
+controlVectorDbR = min(0.0, slope * (thresholdDb - lastEnvDbR));
+controlVectorR = 10 ^ (controlVectorDbR / 20);
+
+
+spl0 *= controlVectorL * outputGain;
+spl1 *= controlVectorR * outputGain;
+

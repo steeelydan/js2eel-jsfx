@@ -1,0 +1,11 @@
+/*
+v1.0.0
+*/
+
+desc:sd_mute
+
+// https://wiki.cockos.com/wiki/index.php/1st_Ever_Jesusonic_Tutorial
+
+@sample
+spl0 = 0;
+spl1 = 0;

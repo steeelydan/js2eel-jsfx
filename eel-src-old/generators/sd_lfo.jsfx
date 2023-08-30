@@ -1,0 +1,35 @@
+/*
+v1.0.0
+
+Taken from Cockos' tonegenerator
+*/
+
+desc:sd_lfo
+
+slider3:freq=0.2<0.01,10,0.01>Freq
+slider7:type=0<0,2,1{Sine,Triangle,Saw}>Shape
+
+@init
+TYPE_SINE = 0;
+TYPE_TRIANGLE = 1;
+TYPE_SAW = 2;
+
+@slider
+  movement = 2 * $pi * freq / srate;
+
+@sample
+
+(type == TYPE_SINE) ? (
+  tone = cos(pos);
+) : (type == TYPE_TRIANGLE) ? (
+  tone = 2 * pos / $pi - 1;
+  (tone > 1) ? tone = 2 - tone;
+) : (type == TYPE_SAW) ? (
+  tone = 1 - pos / $pi;
+);
+
+spl0 = tone * 0.2;
+spl1 = tone * 0.2;
+
+pos = pos + movement;
+(pos >= 2 * $pi) ? pos -= 2 * $pi;

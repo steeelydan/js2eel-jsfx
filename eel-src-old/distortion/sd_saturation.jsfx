@@ -1,0 +1,83 @@
+/*
+v1.0.0
+Adapted (mostly copied) from Tukan's PreAmp (v. 1.1)
+https://github.com/TukanStudios/TUKAN_STUDIOS_PLUGINS
+*/
+
+desc:sd_saturation
+
+slider1:0<0,24,0.1>Input (dB)
+slider2:tubeAmount=5<0,100,0.1>Tube (%)
+slider3:0<-12,12,0.1>Output (dB)
+
+in_pin:L in
+in_pin:R in
+out_pin:L out
+out_pin:R out
+
+@init
+
+ext_noinit = 1;
+
+@slider
+
+inputGain = 10 ^ (slider1 / 20);
+outputGain = 10 ^ (slider3 / 20);
+
+tube = tubeAmount > 0 ?
+  (tubeAmount + 6.24) * 0.1186 : // Numbers taken from Tukan's plugin
+  1;
+
+@sample
+
+// Apply TANH
+
+inputGain > 1 ? (
+  wetL = exp(2 * spl0 * inputGain);
+  wetL = (wetL - 1) / (wetL + 1);
+
+  wetR = exp(2 * spl1 * inputGain);
+  wetR = (wetR - 1) / (wetR + 1);
+) : (
+  wetL = spl0;
+  wetR = spl1;
+);
+
+
+// Apply tube
+
+tube > 1 ? (
+  outL = (
+    (
+      (exp(wetL * tube) - exp(wetL * tube * -1.2))
+      / (exp(wetL * tube) + exp(wetL * tube * -1.0))
+    )
+    / tube
+  );
+
+  outR = (
+    (
+      (exp(wetR * tube) - exp(wetR * tube * -1.2))
+      / (exp(wetR * tube) + exp(wetR * tube * -1.0))
+    )
+    / tube
+  );
+) : (
+  outL = wetL;
+  outR = wetR;
+);
+
+spl0 = outL * outputGain;
+spl1 = outR * outputGain;
+
+// Remove DC (see Cockos' dc_remove)
+
+inputGain > 1 || tube > 1 ? (
+  dcStateOutL = 0.999 * dcStateOutL + spl0 - dcStateInL;
+  dcStateInL = spl0;
+  spl0 = dcStateOutL;
+
+  dcStateOutR = 0.999 * dcStateOutR + spl1 - dcStateInR;
+  dcStateInR = spl1;
+  spl1 = dcStateOutR;
+);

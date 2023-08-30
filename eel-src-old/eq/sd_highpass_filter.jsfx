@@ -1,0 +1,13 @@
+/*
+    Simplest design, only useful for learning
+*/
+
+desc:sd_highpass_filter
+
+@sample
+currAvgL = (spl0 - previousL) / 2;
+currAvgR = (spl1 - previousR) / 2;
+previousL = spl0;
+previousR = spl1;
+spl0 = currAvgL;
+spl1 = currAvgR;

@@ -1,0 +1,59 @@
+/*
+For a practical implementation see sd_4band_eq
+Tutorial: https://www.youtube.com/watch?v=WR8PtyfLAVc
+Specification: https://www.w3.org/TR/audio-eq-cookbook/
+*/
+
+desc:sd_peak_filter
+
+
+slider1:freq=300 <20, 20000, 1>Freq [Hz]
+slider2:q=1 <0.1, 7, 0.01>Q
+slider3:gain=0 <-96, 15, 0.01>Gain [dB]
+
+@init
+
+x_n = 0;
+x_n_1 = 2;
+x_n_2 = 4;
+y_n = 6;
+y_n_1 = 8;
+y_n_2 = 10;
+
+@slider
+
+A = 10 ^ (gain / 40);
+omega = 2 * $pi * freq / srate;
+sinOmega = sin(omega);
+cosOmega = cos(omega);
+alpha = sinOmega / (2 * q);
+beta = sqrt(A) / q;
+
+b0 = 1 + alpha * A;
+b1 = -2 * cosOmega;
+b2 = 1 - alpha * A;
+a0 = 1 + alpha / A;
+a1 = -2 * cosOmega;
+a2 = 1 - alpha / A;
+
+@sample
+
+channel = -1;
+
+loop(2,
+channel += 1;
+
+    y_n_2[channel] = y_n_1[channel];
+    y_n_1[channel] = y_n[channel];
+    y_n[channel] = (b0 / a0) * x_n[channel]
+      + (b1 / a0) * x_n_1[channel]
+      + (b2 / a0) * x_n_2[channel]
+      - (a1 / a0) * y_n_1[channel]
+      - (a2 / a0) * y_n_2[channel];
+
+    x_n_2[channel] = x_n_1[channel];
+    x_n_1[channel] = x_n[channel];
+    x_n[channel] = spl(channel);
+
+    spl(channel) = y_n[channel];
+);

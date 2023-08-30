@@ -1,0 +1,41 @@
+/*
+v1.0.0
+*/
+
+desc: sd_clipper
+
+slider1:mode=0<0,1,1{Hard,Soft}>Mode
+slider3:ceilingDb=0<-48, 0,0.01> Ceiling (dB)
+slider4:gainDb=0<  0,48,0.01> Gain (dB)
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+@init
+
+MODE_HARD = 0;
+MODE_SOFT = 1;
+
+
+@slider
+
+ceiling = 10 ^ (ceilingDb / 20);
+gain = 10 ^ (gainDb / 20);
+
+
+@sample
+
+mode == 0 ? (
+    spl0 *= gain;
+    spl1 *= gain;
+
+    spl0 = max(-ceiling, min(ceiling, spl0));
+    spl1 = max(-ceiling, min(ceiling, spl1));
+) : (
+    // TBI
+    spl0 = spl0;
+    spl1 = spl1;
+);
+

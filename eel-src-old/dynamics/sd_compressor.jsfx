@@ -1,0 +1,55 @@
+/*
+This is crap, don't use it
+*/
+
+desc:sd_compressor
+
+// Adapted from https://wiki.cockos.com/wiki/index.php/1st_Ever_Jesusonic_Tutorial
+
+slider1: -10 <-72, 6, 0.1>Threshold [dB]
+slider2: ratio=2 <1, 10, 0.01>Ratio
+slider3: attacksetting=5 <0.01, 50, 0.01>Attack [ms]
+slider4: releasesetting=50 <1, 500, 1>Release [ms]
+slider5: 0 <0, 24 , 0.1> Makeup [dB]
+
+
+@init
+gain = 1;
+
+@slider
+thresh = 10 ^ (slider1 / 20);
+makeup = 10 ^ (slider5 / 20);
+
+attack = 10 ^ ((6 * (100  / attacksetting) / srate) / 20);
+
+release = 10 ^ ((6 * (100 / releasesetting ) / srate) / 20);
+
+@sample
+maxsamples = max(abs(spl0), abs(spl1));
+
+// Check if about threshold, if about threshold,
+// set 'seekgain' so the threshold and ratio settings entered by the user
+// are met, and if not over threshold, set 'seekgain' to 1 (=0dB).
+maxsamples > thresh ?
+    (
+        seekgain = (thresh + (maxsamples - thresh) / ratio) / maxsamples;
+    ) : (
+        seekgain = 1
+    );
+
+// Make 'gain' follow 'seekgain' with the specified
+// attack and release speed:
+gain > seekgain ? ( gain /= attack; ) : ( gain *= release; );
+
+gr = 20 * log10(gain * seekgain);
+
+spl0 *= gain * makeup;
+spl1 *= gain * makeup;
+
+@gfx 0 20
+gfx_r=1; gfx_g=gfx_b=0; gfx_a=0.8;
+
+gfx_rect(0, 0, -gr * 20, 20);
+gfx_x=2; gfx_y=2;
+gfx_r=gfx_g=gfx_b=1;
+gfx_drawnumber(abs(gr),1);

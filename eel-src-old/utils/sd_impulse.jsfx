@@ -1,0 +1,12 @@
+/*
+v1.0.0
+Creates an impulse followed by nothing.
+*/
+
+desc:sd_impulse
+
+@sample
+counter == 0 ?
+  spl0 = spl1 = 1 :
+  spl0 = spl1 = 0;
+counter += 1;

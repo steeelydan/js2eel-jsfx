@@ -1,0 +1,83 @@
+/*
+v1.0.0
+
+See Pirkle, Designing Audio Effect Plugins
+*/
+
+desc:sd_triode_class_a
+
+slider1:distortionModel=0<0,2,1{Soft Clip,Arctangent,Fuzz Exponential}>Model
+slider2:saturation=1<0.01,10,0.01>Saturation
+slider3:asymmetry=0<-1,1,0.01>Asymmetry (Fuzz only)
+slider4:invertOutput=0<0,1,1{No,Yes}>Invert Output
+// slider5:enableDCBlocking=1<0,1,1{No,Yes}>Enable DC Blocking
+// slider8:enableLSF=0<0,1,1{No,Yes}>Enable LSF
+// slider9:lsfFreq = 80<30,3000,0.1>LSF Freq
+// slider10:lsfGain = 0<-18,18,0.01>LSF Gain
+slider12:outputGainDb=0<-24,12,0.1>Output Gain
+
+
+@init
+
+MODEL_SOFT_CLIP = 0;
+MODEL_ARCTAN = 1;
+MODEL_FUZZ_EXP = 2;
+
+// FILTER_Q = 0.707;
+
+// c0 = 1;
+// d0 = 0;
+
+// hpfFreq = 1000; // Pirkle: "fc of DC blocking cap"
+// hpfThetaC = 2 * $pi * hpfFreq / srate;
+// hpfGamma = cos(hpfThetaC) / (1 + sin(hpfThetaC));
+// hpfA0 = (1 + hpfGamma) / 2;
+// hpfA1 = -(1 + hpfGamma) / 2;
+// hpfA2 = 0;
+// hpfB1 = -hpfGamma;
+// hpfB2 = 0;
+
+
+@slider
+
+outputGain = 10 ^ (outputGainDb / 20);
+
+@sample
+
+wetL = spl0;
+wetR = spl1;
+
+distortionModel == MODEL_SOFT_CLIP ? (
+    // FIXME: What is this algorithm? Not mentioned above.
+    wetL = sign(wetL) * (1 - exp(-abs(saturation * wetL)));
+    wetR = sign(wetR) * (1 - exp(-abs(saturation * wetR)));
+) : distortionModel == MODEL_ARCTAN ? (
+    wetL = atan(wetL * saturation) / atan(saturation);
+    wetR = atan(wetR * saturation) / atan(saturation);
+) : distortionModel == MODEL_FUZZ_EXP ? (
+    wsGainL = ((wetL >= 0 && asymmetry > 0) || (wetL < 0 && asymmetry < 0)) ? saturation * (1 + 4 * abs(asymmetry)) : saturation;
+    wetL = sign(wetL) * (1 - exp(-abs(wsGainL * wetL))) / (1 - exp(-wsGainL));
+    wsGainR = ((wetR >= 0 && asymmetry > 0) || (wetR < 0 && asymmetry < 0)) ? saturation * (1 + 4 * abs(asymmetry)) : saturation;
+    wetR = sign(wetR) * (1 - exp(-abs(wsGainR * wetR))) / (1 - exp(-wsGainR));
+);
+
+invertOutput ? (
+    spl0 *= -1;
+    spl1 *= -1;
+);
+
+// enableDCBlocking ? (
+//     hpfYL = hpfA0 * wetL + hpfX1L;
+//     hpfX1L = hpfA1 * wetL - hpfB1 * hpfYL + hpfX2L;
+//     hpfX2L = hpfA2 * wetL - hpfB2 * hpfYL;
+//     wetL = d0 * wetL + c0 * hpfYL;
+
+//     hpfYR = hpfA0 * wetR + hpfX1R;
+//     hpfX1R = hpfA1 * wetR - hpfB1 * hpfYR + hpfX2R;
+//     hpfX2R = hpfA2 * wetR - hpfB2 * hpfYR;
+//     wetR = d0 * wetR + c0 * hpfYR;
+// );
+
+
+spl0 = wetL * outputGain;
+spl1 = wetR * outputGain;

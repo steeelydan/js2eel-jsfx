@@ -1,0 +1,126 @@
+/*
+v1.0.0
+Pirkle, Designing Audio Effect Plugins 2nd ed., p. 548
+*/
+
+desc:sd_pirkle_waveshapers
+
+slider1:gainInDb=0<0, 36, 0.01>Gain In (dB)
+slider2:algorithm=0<0,15,1{Soft Clip: Arraya,Soft Clip: Sigmoid,Soft Clip: Sigmoid2,Soft Clip: Hyperbolic Tangent,Soft Clip: Arctangent,Soft Clip: Fuzz Exponential,DANGER Fuzz Exponential 2,Exponential 2,Arctangent Square Root,Square Sign,Cube,Hard Clipper,Half Wave Rectifier,Full Wave Rectifier,Square Law,Absolute Square Root}>Algorithm
+slider3:dryOutputDb=-96<-96,0,0.1>Dry (dB)
+slider4:wetOutputDb=0<-96,0,0.1>Wet (dB)
+slider5:volumeOutDb=0<-18, 18, 0.01>Volume Out (dB)
+
+
+@init
+ALGO_ARRAYA = 0;
+ALGO_SIGMOID = 1;
+ALGO_SIGMOID2 = 2;
+ALGO_TANH = 3;
+ALGO_ATAN = 4;
+ALGO_FUZZ_EXP = 5;
+ALGO_FUZZ_EXP_2 = 6;
+ALGO_EXP_2 = 7;
+ALGO_ATAN_SQRT = 8;
+ALGO_SQUARE_SIGN = 9;
+ALGO_CUBE = 10;
+ALGO_HARD_CLIPPER = 11;
+ALGO_HALF_WAVE_RECTIFIER = 12;
+ALGO_FULL_WAVE_RECTIFIER = 13;
+ALGO_SQUARE_LAW = 14;
+ALGO_ABS_SQUARE_ROOT = 15;
+
+prevAlgorithm = algorithm;
+
+
+@slider
+
+gainIn = 10 ^ (gainInDb / 20);
+volumeOut = 10 ^ (volumeOutDb / 20);
+dryOutput = dryOutputDb < -95 ? 0 : 10 ^ (dryOutputDb / 20);
+wetOutput = wetOutputDb < -95 ? 0 : 10 ^ (wetOutputDb / 20);
+
+// Those without gainIn
+algorithm > 5 ? (
+    gainInDb = 0;
+
+    algorithm != prevAlgorithm ? (
+        volumeOutDb = 0;
+        prevAlgorithm = algorithm;
+        algorithm == ALGO_FUZZ_EXP_2 ? (
+            volumeOutDb = -10;
+        );
+    );
+);
+
+@sample
+
+wetL = spl0;
+wetR = spl1;
+
+// Soft clip sigmoid waveshaper functions
+
+algorithm == ALGO_ARRAYA ? (
+    wetL = (3 * wetL * 0.5) * (1 - sqr(wetL) / 3);
+    wetR = (3 * wetR * 0.5) * (1 - sqr(wetR) / 3);
+) : algorithm == ALGO_SIGMOID ? (
+    wetL = 2 * (1 / (1 + exp(-gainIn * wetL))) - 1;
+    wetR = 2 * (1 / (1 + exp(-gainIn * wetR))) - 1;
+) : algorithm == ALGO_SIGMOID2 ? (
+    wetL = ((exp(wetL) - 1) * ($e + 1)) / ((exp(wetL) + 1) * ($e - 1));
+    wetR = ((exp(wetR) - 1) * ($e + 1)) / ((exp(wetR) + 1) * ($e - 1));
+) : algorithm == ALGO_TANH ? (
+    wetL = (
+        (exp(2 * wetL * gainIn) - 1)
+        / (exp(2 * wetL * gainIn) + 1)
+    ) / (
+        (exp(2 * gainIn) - 1)
+        / (exp(2 * gainIn) + 1)
+    );
+    wetR = (
+        (exp(2 * wetR * gainIn) - 1)
+        / (exp(2 * wetR * gainIn) + 1)
+    ) / (
+        (exp(2 * gainIn) - 1)
+        / (exp(2 * gainIn) + 1)
+    );
+) : algorithm == ALGO_ATAN ? (
+    wetL = atan(wetL * gainIn) / atan(gainIn);
+    wetR = atan(wetR * gainIn) / atan(gainIn);
+) : algorithm == ALGO_FUZZ_EXP ? (
+    wetL = sign(wetL) * (1 - exp(-abs(gainIn * wetL))) / (1 - exp(-gainIn));
+    wetR = sign(wetR) * (1 - exp(-abs(gainIn * wetR))) / (1 - exp(-gainIn));
+) : algorithm == ALGO_FUZZ_EXP_2 ? (
+    wetL = sign(-wetL) * (1 - exp(abs(gainIn))) / ($e - 1);
+    wetR = sign(-wetR) * (1 - exp(abs(gainIn))) / ($e - 1);
+) : algorithm == ALGO_EXP_2 ? (
+    wetL = ($e - exp(1 - wetL)) / ($e - 1);
+    wetR = ($e - exp(1 - wetR)) / ($e - 1);
+) : algorithm == ALGO_ATAN_SQRT ? (
+    wetL = 2.5 * atan(0.9 * wetL) +  2.5 * sqrt(1 - sqr(0.9 * wetL)) - 2.5;
+    wetR = 2.5 * atan(0.9 * wetR) +  2.5 * sqrt(1 - sqr(0.9 * wetR)) - 2.5;
+) : algorithm == ALGO_SQUARE_SIGN ? (
+    wetL = sqr(wetL) * sign(wetL);
+    wetR = sqr(wetR) * sign(wetR);
+) : algorithm == ALGO_CUBE ? (
+    wetL = wetL ^ 3;
+    wetR = wetR ^ 3;
+) : algorithm == ALGO_HARD_CLIPPER ? (
+    wetL = abs(wetL) > 0.5 ? 0.5 * sign(wetL) : wetL;
+    wetR = abs(wetR) > 0.5 ? 0.5 * sign(wetR) : wetR;
+) : algorithm == ALGO_HALF_WAVE_RECTIFIER ? (
+    wetL = 0.5 * (wetL + abs(wetL));
+    wetR = 0.5 * (wetR + abs(wetR));
+) : algorithm == ALGO_FULL_WAVE_RECTIFIER ? (
+    wetL = abs(wetL);
+    wetR = abs(wetR);
+) : algorithm == ALGO_SQUARE_LAW ? (
+    wetL = sqr(wetL);
+    wetR = sqr(wetR);
+) : algorithm == ALGO_ABS_SQUARE_ROOT ? (
+    wetL = sqrt(abs(wetL));
+    wetR = sqrt(abs(wetR));
+);
+
+spl0 = (wetL * wetOutput + spl0 * dryOutput) * volumeOut;
+spl1 = (wetR * wetOutput + spl1 * dryOutput) * volumeOut;

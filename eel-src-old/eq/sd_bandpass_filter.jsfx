@@ -1,0 +1,34 @@
+/*
+    Only useful for learning
+    https://www.youtube.com/watch?v=WR8PtyfLAVc
+    Inifinite Impulse Response filter (IIRF)
+*/
+
+desc:sd_bandpass_filter
+
+
+slider1: 1 <0, 1, 0.01> Previous vs. current
+
+@init
+prev1L = 0;
+prev1R = 0;
+prev2L = 0;
+prev2R = 0;
+
+@slider
+currVsPrev = (slider1 * 2) -1;
+
+@sample
+lCurrTerm = spl0 * (1 + currVsPrev);
+rCurrTerm = spl1 * (1 + currVsPrev);
+lPrevTerm = prev2L * (1 - currVsPrev);
+rPrevTerm = prev2R * (1 - currVsPrev);
+currAvgL = (lCurrTerm - lPrevTerm) / 2;
+currAvgR = (rCurrTerm - rPrevTerm) / 2;
+
+spl0 = currAvgL;
+spl1 = currAvgR;
+prev2L = prev1L;
+prev2R = prev1R;
+prev1L = spl0;
+prev1R = spl1;
