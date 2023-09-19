@@ -1,0 +1,73 @@
+/* Compiled with JS2EEL v0.6.5 */
+
+desc:sd_4band_eq_2
+
+slider1:lpFreq=22000 < 3000, 22000, 1 >LP Freq
+slider2:lpQ=0.5 < 0.1, 7, 0.01 >Q
+slider50:outputGainDb=0 < -15, 15, 0.01 >Output Gain (dB)
+
+in_pin:In 0
+in_pin:In 1
+out_pin:In 0
+out_pin:In 1
+
+
+@slider
+
+omega__S1 = 2 * $pi * lpFreq / (srate);
+sinOmega__S1 = sin(omega__S1);
+cosOmega__S1 = cos(omega__S1);
+alpha__S1 = sinOmega__S1 / (2 * lpQ);
+lpCoefs__D0__0 = (1 + alpha__S1);
+lpCoefs__D0__1 = -2 * cosOmega__S1;
+lpCoefs__D0__2 = (1 - alpha__S1);
+lpCoefs__D1__0 = (1 - cosOmega__S1) / (2);
+lpCoefs__D1__1 = (1 - cosOmega__S1);
+lpCoefs__D1__2 = (1 - cosOmega__S1) / (2);
+lpXCoefs__D0__1 = lpCoefs__D0__1 / (lpCoefs__D0__0);
+lpXCoefs__D0__2 = lpCoefs__D0__2 / (lpCoefs__D0__0);
+lpXCoefs__D1__0 = lpCoefs__D1__0 / (lpCoefs__D0__0);
+lpXCoefs__D1__1 = lpCoefs__D1__1 / (lpCoefs__D0__0);
+lpXCoefs__D1__2 = lpCoefs__D1__2 / (lpCoefs__D0__0);
+
+
+outputGain = (10 ^ (outputGainDb / (20)));
+
+
+@sample
+
+
+/* Channel 0 */
+
+value__S10 = spl0;
+lpFreq < 22000 ? (
+value__S11 = value__S10;
+lpYBuffer__D0__0 = ((((lpXCoefs__D1__0 * lpXBuffer__D0__0 + lpXCoefs__D1__1 * lpXBuffer__D0__1) + lpXCoefs__D1__2 * lpXBuffer__D0__2) - lpXCoefs__D0__1 * lpYBuffer__D0__1) - lpXCoefs__D0__2 * lpYBuffer__D0__2);
+lpYBuffer__D0__2 = lpYBuffer__D0__1;
+lpYBuffer__D0__1 = lpYBuffer__D0__0;
+lpXBuffer__D0__2 = lpXBuffer__D0__1;
+lpXBuffer__D0__1 = lpXBuffer__D0__0;
+lpXBuffer__D0__0 = value__S11;
+R__S11__0 = lpYBuffer__D0__0;
+value__S10 = R__S11__0;
+);
+spl0 = value__S10 * outputGain;
+
+/* Channel 1 */
+
+value__S13 = spl1;
+lpFreq < 22000 ? (
+value__S14 = value__S13;
+lpYBuffer__D1__0 = ((((lpXCoefs__D1__0 * lpXBuffer__D1__0 + lpXCoefs__D1__1 * lpXBuffer__D1__1) + lpXCoefs__D1__2 * lpXBuffer__D1__2) - lpXCoefs__D0__1 * lpYBuffer__D1__1) - lpXCoefs__D0__2 * lpYBuffer__D1__2);
+lpYBuffer__D1__2 = lpYBuffer__D1__1;
+lpYBuffer__D1__1 = lpYBuffer__D1__0;
+lpXBuffer__D1__2 = lpXBuffer__D1__1;
+lpXBuffer__D1__1 = lpXBuffer__D1__0;
+lpXBuffer__D1__0 = value__S14;
+R__S14__0 = lpYBuffer__D1__0;
+value__S13 = R__S14__0;
+);
+spl1 = value__S13 * outputGain;
+
+
+

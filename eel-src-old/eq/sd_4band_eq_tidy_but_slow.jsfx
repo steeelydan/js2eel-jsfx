@@ -175,15 +175,14 @@ function processSample(
   coefs*
 )
   (
-    buffer.y2[ch] = buffer.y1[ch];
-    buffer.y1[ch] = buffer.y[ch];
-
     buffer.y[ch] = coefs.b0x * buffer.x[ch]
       + coefs.b1x * buffer.x1[ch]
       + coefs.b2x * buffer.x2[ch]
       - coefs.a1x * buffer.y1[ch]
       - coefs.a2x * buffer.y2[ch];
 
+    buffer.y2[ch] = buffer.y1[ch];
+    buffer.y1[ch] = buffer.y[ch];
     buffer.x2[ch] = buffer.x1[ch];
     buffer.x1[ch] = buffer.x[ch];
     buffer.x[ch] = prevValue;
