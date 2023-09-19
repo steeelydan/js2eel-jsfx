@@ -4,7 +4,6 @@ let lpFreq;
 let lpQ;
 
 const lpCoefs = new EelArray(2, 3);
-const lpXCoefs = new EelArray(2, 3);
 const lpXBuffer = new EelArray(2, 3);
 const lpYBuffer = new EelArray(2, 3);
 
@@ -22,18 +21,18 @@ function setLpCoefs() {
     const cosOmega = cos(omega);
     const alpha = sinOmega / (2 * lpQ);
 
-    lpCoefs[0][0] = 1 + alpha;
-    lpCoefs[0][1] = -2 * cosOmega;
-    lpCoefs[0][2] = 1 - alpha;
-    lpCoefs[1][0] = (1 - cosOmega) / 2;
-    lpCoefs[1][1] = 1 - cosOmega;
-    lpCoefs[1][2] = (1 - cosOmega) / 2;
+    const a0 = 1 + alpha;
+    const a1 = -2 * cosOmega;
+    const a2 = 1 - alpha;
+    const b0 = (1 - cosOmega) / 2;
+    const b1 = 1 - cosOmega;
+    const b2 = (1 - cosOmega) / 2;
 
-    lpXCoefs[0][1] = lpCoefs[0][1] / lpCoefs[0][0];
-    lpXCoefs[0][2] = lpCoefs[0][2] / lpCoefs[0][0];
-    lpXCoefs[1][0] = lpCoefs[1][0] / lpCoefs[0][0];
-    lpXCoefs[1][1] = lpCoefs[1][1] / lpCoefs[0][0];
-    lpXCoefs[1][2] = lpCoefs[1][2] / lpCoefs[0][0];
+    lpCoefs[0][1] = a1 / a0;
+    lpCoefs[0][2] = a2 / a0;
+    lpCoefs[1][0] = b0 / a0;
+    lpCoefs[1][1] = b1 / a0;
+    lpCoefs[1][2] = b2 / a0;
 }
 
 function setCoefs() {
@@ -54,11 +53,11 @@ onSample(() => {
     eachChannel((sample, channel) => {
         function processSample(value) {
             lpYBuffer[channel][0] =
-                lpXCoefs[1][0] * lpXBuffer[channel][0] +
-                lpXCoefs[1][1] * lpXBuffer[channel][1] +
-                lpXCoefs[1][2] * lpXBuffer[channel][2] -
-                lpXCoefs[0][1] * lpYBuffer[channel][1] -
-                lpXCoefs[0][2] * lpYBuffer[channel][2];
+                lpCoefs[1][0] * lpXBuffer[channel][0] +
+                lpCoefs[1][1] * lpXBuffer[channel][1] +
+                lpCoefs[1][2] * lpXBuffer[channel][2] -
+                lpCoefs[0][1] * lpYBuffer[channel][1] -
+                lpCoefs[0][2] * lpYBuffer[channel][2];
 
             lpYBuffer[channel][2] = lpYBuffer[channel][1];
             lpYBuffer[channel][1] = lpYBuffer[channel][0];

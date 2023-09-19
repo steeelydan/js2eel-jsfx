@@ -18,17 +18,17 @@ omega__S1 = 2 * $pi * lpFreq / (srate);
 sinOmega__S1 = sin(omega__S1);
 cosOmega__S1 = cos(omega__S1);
 alpha__S1 = sinOmega__S1 / (2 * lpQ);
-lpCoefs__D0__0 = (1 + alpha__S1);
-lpCoefs__D0__1 = -2 * cosOmega__S1;
-lpCoefs__D0__2 = (1 - alpha__S1);
-lpCoefs__D1__0 = (1 - cosOmega__S1) / (2);
-lpCoefs__D1__1 = (1 - cosOmega__S1);
-lpCoefs__D1__2 = (1 - cosOmega__S1) / (2);
-lpXCoefs__D0__1 = lpCoefs__D0__1 / (lpCoefs__D0__0);
-lpXCoefs__D0__2 = lpCoefs__D0__2 / (lpCoefs__D0__0);
-lpXCoefs__D1__0 = lpCoefs__D1__0 / (lpCoefs__D0__0);
-lpXCoefs__D1__1 = lpCoefs__D1__1 / (lpCoefs__D0__0);
-lpXCoefs__D1__2 = lpCoefs__D1__2 / (lpCoefs__D0__0);
+a0__S1 = (1 + alpha__S1);
+a1__S1 = -2 * cosOmega__S1;
+a2__S1 = (1 - alpha__S1);
+b0__S1 = (1 - cosOmega__S1) / (2);
+b1__S1 = (1 - cosOmega__S1);
+b2__S1 = (1 - cosOmega__S1) / (2);
+lpCoefs__D0__1 = a1__S1 / (a0__S1);
+lpCoefs__D0__2 = a2__S1 / (a0__S1);
+lpCoefs__D1__0 = b0__S1 / (a0__S1);
+lpCoefs__D1__1 = b1__S1 / (a0__S1);
+lpCoefs__D1__2 = b2__S1 / (a0__S1);
 
 
 outputGain = (10 ^ (outputGainDb / (20)));
@@ -42,7 +42,7 @@ outputGain = (10 ^ (outputGainDb / (20)));
 value__S10 = spl0;
 lpFreq < 22000 ? (
 value__S11 = value__S10;
-lpYBuffer__D0__0 = ((((lpXCoefs__D1__0 * lpXBuffer__D0__0 + lpXCoefs__D1__1 * lpXBuffer__D0__1) + lpXCoefs__D1__2 * lpXBuffer__D0__2) - lpXCoefs__D0__1 * lpYBuffer__D0__1) - lpXCoefs__D0__2 * lpYBuffer__D0__2);
+lpYBuffer__D0__0 = ((((lpCoefs__D1__0 * lpXBuffer__D0__0 + lpCoefs__D1__1 * lpXBuffer__D0__1) + lpCoefs__D1__2 * lpXBuffer__D0__2) - lpCoefs__D0__1 * lpYBuffer__D0__1) - lpCoefs__D0__2 * lpYBuffer__D0__2);
 lpYBuffer__D0__2 = lpYBuffer__D0__1;
 lpYBuffer__D0__1 = lpYBuffer__D0__0;
 lpXBuffer__D0__2 = lpXBuffer__D0__1;
@@ -58,7 +58,7 @@ spl0 = value__S10 * outputGain;
 value__S13 = spl1;
 lpFreq < 22000 ? (
 value__S14 = value__S13;
-lpYBuffer__D1__0 = ((((lpXCoefs__D1__0 * lpXBuffer__D1__0 + lpXCoefs__D1__1 * lpXBuffer__D1__1) + lpXCoefs__D1__2 * lpXBuffer__D1__2) - lpXCoefs__D0__1 * lpYBuffer__D1__1) - lpXCoefs__D0__2 * lpYBuffer__D1__2);
+lpYBuffer__D1__0 = ((((lpCoefs__D1__0 * lpXBuffer__D1__0 + lpCoefs__D1__1 * lpXBuffer__D1__1) + lpCoefs__D1__2 * lpXBuffer__D1__2) - lpCoefs__D0__1 * lpYBuffer__D1__1) - lpCoefs__D0__2 * lpYBuffer__D1__2);
 lpYBuffer__D1__2 = lpYBuffer__D1__1;
 lpYBuffer__D1__1 = lpYBuffer__D1__0;
 lpXBuffer__D1__2 = lpXBuffer__D1__1;
