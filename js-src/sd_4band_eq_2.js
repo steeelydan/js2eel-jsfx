@@ -4,8 +4,8 @@ let lpFreq;
 let lpQ;
 
 const lpCoefs = new EelArray(2, 3);
-const lpXBuffer = new EelArray(2, 3);
-const lpYBuffer = new EelArray(2, 3);
+const lpXStore = new EelArray(2, 3);
+const lpYStore = new EelArray(2, 3);
 
 let outputGainDb;
 let outputGain;
@@ -52,20 +52,20 @@ onSlider(() => {
 onSample(() => {
     eachChannel((sample, channel) => {
         function processSample(value) {
-            lpYBuffer[channel][0] =
-                lpCoefs[1][0] * lpXBuffer[channel][0] +
-                lpCoefs[1][1] * lpXBuffer[channel][1] +
-                lpCoefs[1][2] * lpXBuffer[channel][2] -
-                lpCoefs[0][1] * lpYBuffer[channel][1] -
-                lpCoefs[0][2] * lpYBuffer[channel][2];
+            lpYStore[channel][0] =
+                lpCoefs[1][0] * lpXStore[channel][0] +
+                lpCoefs[1][1] * lpXStore[channel][1] +
+                lpCoefs[1][2] * lpXStore[channel][2] -
+                lpCoefs[0][1] * lpYStore[channel][1] -
+                lpCoefs[0][2] * lpYStore[channel][2];
 
-            lpYBuffer[channel][2] = lpYBuffer[channel][1];
-            lpYBuffer[channel][1] = lpYBuffer[channel][0];
-            lpXBuffer[channel][2] = lpXBuffer[channel][1];
-            lpXBuffer[channel][1] = lpXBuffer[channel][0];
-            lpXBuffer[channel][0] = value;
+            lpYStore[channel][2] = lpYStore[channel][1];
+            lpYStore[channel][1] = lpYStore[channel][0];
+            lpXStore[channel][2] = lpXStore[channel][1];
+            lpXStore[channel][1] = lpXStore[channel][0];
+            lpXStore[channel][0] = value;
 
-            return lpYBuffer[channel][0];
+            return lpYStore[channel][0];
         }
 
         let value = sample;
