@@ -283,47 +283,23 @@ onSample(() => {
             if (highType === 'peak') {
                 sample = processSample(sample, ch, hiCoefs, hiXStore, hiYStore);
             } else {
-                sample = processSample(
-                    sample,
-                    ch,
-                    hiShelfCoefs,
-                    hiShelfXStore,
-                    hiShelfYStore
-                );
+                sample = processSample(sample, ch, hiShelfCoefs, hiShelfXStore, hiShelfYStore);
             }
         }
 
         if (hiMidGain !== 0) {
-            sample = processSample(
-                sample,
-                ch,
-                hiMidCoefs,
-                hiMidXStore,
-                hiMidYStore
-            );
+            sample = processSample(sample, ch, hiMidCoefs, hiMidXStore, hiMidYStore);
         }
 
         if (loMidGain !== 0) {
-            sample = processSample(
-                sample,
-                ch,
-                loMidCoefs,
-                loMidXStore,
-                loMidYStore
-            );
+            sample = processSample(sample, ch, loMidCoefs, loMidXStore, loMidYStore);
         }
 
         if (lowGain !== 0) {
             if (lowType === 'peak') {
                 sample = processSample(sample, ch, loCoefs, loXStore, loYStore);
             } else {
-                sample = processSample(
-                    sample,
-                    ch,
-                    loShelfCoefs,
-                    loShelfXStore,
-                    loShelfYStore
-                );
+                sample = processSample(sample, ch, loShelfCoefs, loShelfXStore, loShelfYStore);
             }
         }
 
