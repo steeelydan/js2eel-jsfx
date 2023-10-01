@@ -3,15 +3,50 @@ config({ description: 'sd_4band_eq_2', inChannels: 2, outChannels: 2 });
 let lpFreq;
 let lpQ;
 
-const lpCoefs = new EelArray(2, 3);
-const lpXStore = new EelArray(2, 3);
-const lpYStore = new EelArray(2, 3);
+let highType;
+let highFreq;
+let highQ;
+let highGain;
 
 let outputGainDb;
 let outputGain;
 
-slider(1, lpFreq, 22000, 3000, 22000, 1, 'LP Freq');
+const lpCoefs = {
+    a1x: 0,
+    a2x: 0,
+    b0x: 0,
+    b1x: 0,
+    b2x: 0
+};
+const hiCoefs = {
+    a1x: 0,
+    a2x: 0,
+    b0x: 0,
+    b1x: 0,
+    b2x: 0
+};
+
+const lpXStore = new EelArray(2, 3);
+const lpYStore = new EelArray(2, 3);
+const hiXStore = new EelArray(2, 3);
+const hiYStore = new EelArray(2, 3);
+
+slider(1, lpFreq, 22000, 5, 22000, 1, 'LP Freq');
 slider(2, lpQ, 0.5, 0.1, 7, 0.01, 'Q');
+
+selectBox(
+    4,
+    highType,
+    'shelf',
+    [
+        { name: 'shelf', label: 'Shelf' },
+        { name: 'peak', label: 'Peak' }
+    ],
+    'High Type'
+);
+slider(5, highFreq, 8000, 20, 20000, 1, 'Freq');
+slider(6, highQ, 0.5, 0.1, 7, 0.01, 'Q');
+slider(7, highGain, 0, -15, 15, 0.01, 'Gain (dB)');
 
 slider(50, outputGainDb, 0, -15, 15, 0.01, 'Output Gain (dB)');
 
@@ -28,52 +63,71 @@ function setLpCoefs() {
     const b1 = 1 - cosOmega;
     const b2 = (1 - cosOmega) / 2;
 
-    lpCoefs[0][1] = a1 / a0;
-    lpCoefs[0][2] = a2 / a0;
-    lpCoefs[1][0] = b0 / a0;
-    lpCoefs[1][1] = b1 / a0;
-    lpCoefs[1][2] = b2 / a0;
+    lpCoefs.a1x = a1 / a0;
+    lpCoefs.a2x = a2 / a0;
+    lpCoefs.b0x = b0 / a0;
+    lpCoefs.b1x = b1 / a0;
+    lpCoefs.b2x = b2 / a0;
 }
 
-function setCoefs() {
-    setLpCoefs();
+function setPeakCoefs(targetCoefs, freq, gain, q) {
+    const A = 10 ** (gain / 40);
+    const omega = (2 * $pi * freq) / srate;
+    const sinOmega = sin(omega);
+    const cosOmega = cos(omega);
+    const alpha = sinOmega / (2 * q);
+
+    const a0 = 1 + alpha / A;
+    const a1 = -2 * cosOmega;
+    const a2 = 1 - alpha / A;
+    const b0 = 1 + alpha * A;
+    const b1 = -2 * cosOmega;
+    const b2 = 1 - alpha * A;
+
+    targetCoefs.a1x = a1 / a0;
+    targetCoefs.a2x = a2 / a0;
+    targetCoefs.b0x = b0 / a0;
+    targetCoefs.b1x = b1 / a0;
+    targetCoefs.b2x = b2 / a0;
 }
 
-onInit(() => {
-    setCoefs();
-});
+function processSample(value, ch, coefs, xStore, yStore) {
+    yStore[ch][0] =
+        coefs.b0x * xStore[ch][0] +
+        coefs.b1x * xStore[ch][1] +
+        coefs.b2x * xStore[ch][2] -
+        coefs.a1x * yStore[ch][1] -
+        coefs.a2x * yStore[ch][2];
+
+    yStore[ch][2] = yStore[ch][1];
+    yStore[ch][1] = yStore[ch][0];
+    xStore[ch][2] = xStore[ch][1];
+    xStore[ch][1] = xStore[ch][0];
+    xStore[ch][0] = value;
+
+    return yStore[ch][0];
+}
 
 onSlider(() => {
-    setCoefs();
+    setLpCoefs();
+    setPeakCoefs(hiCoefs, highFreq, highGain, highQ);
 
     outputGain = 10 ** (outputGainDb / 20);
 });
 
 onSample(() => {
-    eachChannel((sample, channel) => {
-        function processSample(value) {
-            lpYStore[channel][0] =
-                lpCoefs[1][0] * lpXStore[channel][0] +
-                lpCoefs[1][1] * lpXStore[channel][1] +
-                lpCoefs[1][2] * lpXStore[channel][2] -
-                lpCoefs[0][1] * lpYStore[channel][1] -
-                lpCoefs[0][2] * lpYStore[channel][2];
-
-            lpYStore[channel][2] = lpYStore[channel][1];
-            lpYStore[channel][1] = lpYStore[channel][0];
-            lpXStore[channel][2] = lpXStore[channel][1];
-            lpXStore[channel][1] = lpXStore[channel][0];
-            lpXStore[channel][0] = value;
-
-            return lpYStore[channel][0];
-        }
-
-        let value = sample;
-
+    eachChannel((sample, ch) => {
         if (lpFreq < 22000) {
-            value = processSample(value);
+            sample = processSample(sample, ch, lpCoefs, lpXStore, lpYStore);
         }
 
-        sample = value * outputGain;
+        if (highGain !== 0) {
+            if (highType === 'peak') {
+                sample = processSample(sample, ch, hiCoefs, hiXStore, hiYStore);
+            } else {
+            }
+        }
+
+        sample = sample * outputGain;
     });
 });
