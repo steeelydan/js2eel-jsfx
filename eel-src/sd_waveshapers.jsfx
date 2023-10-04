@@ -32,6 +32,7 @@ volumeOut = 10 ^ (volumeOutDb / (20));
 
 /* Channel 0 */
 
+dry__S8 = spl0;
 algorithm == 0 ? (
 spl0 = 3 * spl0 * 0.5 * (1 - sqr(spl0) / (3));
 ) : (algorithm == 1 ? (
@@ -76,10 +77,11 @@ spl0 = sqrt(abs(spl0));
 );
 );
 );
-spl0 = (spl0 * wetOutput + spl0 * dryOutput) * volumeOut;
+spl0 = (spl0 * wetOutput + dry__S8 * dryOutput) * volumeOut;
 
 /* Channel 1 */
 
+dry__S24 = spl1;
 algorithm == 0 ? (
 spl1 = 3 * spl1 * 0.5 * (1 - sqr(spl1) / (3));
 ) : (algorithm == 1 ? (
@@ -124,7 +126,7 @@ spl1 = sqrt(abs(spl1));
 );
 );
 );
-spl1 = (spl1 * wetOutput + spl1 * dryOutput) * volumeOut;
+spl1 = (spl1 * wetOutput + dry__S24 * dryOutput) * volumeOut;
 
 
 

@@ -66,6 +66,8 @@ onSlider(() => {
 
 onSample(() => {
     eachChannel((sample, _channel) => {
+        const dry = sample;
+        
         if (algorithm === 'arraya') {
             sample = 3 * sample * 0.5 * (1 - sqr(sample) / 3);
         } else if (algorithm === 'sigmoid') {
@@ -108,6 +110,6 @@ onSample(() => {
             sample = sqrt(abs(sample));
         }
 
-        sample = (sample * wetOutput + sample * dryOutput) * volumeOut;
+        sample = (sample * wetOutput + dry * dryOutput) * volumeOut;
     });
 });
