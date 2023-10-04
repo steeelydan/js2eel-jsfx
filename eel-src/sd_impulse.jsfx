@@ -1,0 +1,31 @@
+/* Compiled with JS2EEL v0.9.1 */
+
+desc:sd_impulse
+
+in_pin:In 0
+in_pin:In 1
+out_pin:In 0
+out_pin:In 1
+
+
+@sample
+
+
+/* Channel 0 */
+
+!done__D0__0 ? (
+spl0 = 1;
+done__D0__0 = 1;
+) : (spl0 = 0;
+);
+
+/* Channel 1 */
+
+!done__D0__1 ? (
+spl1 = 1;
+done__D0__1 = 1;
+) : (spl1 = 0;
+);
+
+
+

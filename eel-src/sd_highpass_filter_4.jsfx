@@ -1,0 +1,77 @@
+/* Compiled with JS2EEL v0.9.1 */
+
+desc:sd_highpass_filter_4
+
+slider1:hpFreq=20 < 20, 22000, 1 >HP Freq
+slider2:hpQ=0.5 < 0.1, 7, 0.01 >Q
+slider50:outputGainDb=0 < -15, 15, 0.01 >Output Gain (dB)
+
+in_pin:In 0
+in_pin:In 1
+out_pin:In 0
+out_pin:In 1
+
+
+@init
+
+hpCoefs__a1x = 0;
+hpCoefs__a2x = 0;
+hpCoefs__b0x = 0;
+hpCoefs__b1x = 0;
+hpCoefs__b2x = 0;
+
+
+@slider
+
+omega__S1 = 2 * $pi * hpFreq / (srate);
+sinOmega__S1 = sin(omega__S1);
+cosOmega__S1 = cos(omega__S1);
+alpha__S1 = sinOmega__S1 / (2 * hpQ);
+a0__S1 = (1 + alpha__S1);
+a1__S1 = -2 * cosOmega__S1;
+a2__S1 = (1 - alpha__S1);
+b0__S1 = (1 + cosOmega__S1) / (2);
+b1__S1 = -(1 + cosOmega__S1);
+b2__S1 = (1 + cosOmega__S1) / (2);
+hpCoefs__a1x = a1__S1 / (a0__S1);
+hpCoefs__a2x = a2__S1 / (a0__S1);
+hpCoefs__b0x = b0__S1 / (a0__S1);
+hpCoefs__b1x = b1__S1 / (a0__S1);
+hpCoefs__b2x = b2__S1 / (a0__S1);
+
+outputGain = (10 ^ (outputGainDb / (20)));
+
+
+@sample
+
+
+/* Channel 0 */
+
+hpFreq > 20 ? (
+hpYStore__D0__0 = ((((hpCoefs__b0x * hpXStore__D0__0 + hpCoefs__b1x * hpXStore__D0__1) + hpCoefs__b2x * hpXStore__D0__2) - hpCoefs__a1x * hpYStore__D0__1) - hpCoefs__a2x * hpYStore__D0__2);
+hpYStore__D0__2 = hpYStore__D0__1;
+hpYStore__D0__1 = hpYStore__D0__0;
+hpXStore__D0__2 = hpXStore__D0__1;
+hpXStore__D0__1 = hpXStore__D0__0;
+hpXStore__D0__0 = spl0;
+R__S2__0 = hpYStore__D0__0;
+spl0 = R__S2__0;
+);
+spl0 = spl0 * outputGain;
+
+/* Channel 1 */
+
+hpFreq > 20 ? (
+hpYStore__D1__0 = ((((hpCoefs__b0x * hpXStore__D1__0 + hpCoefs__b1x * hpXStore__D1__1) + hpCoefs__b2x * hpXStore__D1__2) - hpCoefs__a1x * hpYStore__D1__1) - hpCoefs__a2x * hpYStore__D1__2);
+hpYStore__D1__2 = hpYStore__D1__1;
+hpYStore__D1__1 = hpYStore__D1__0;
+hpXStore__D1__2 = hpXStore__D1__1;
+hpXStore__D1__1 = hpXStore__D1__0;
+hpXStore__D1__0 = spl1;
+R__S2__0 = hpYStore__D1__0;
+spl1 = R__S2__0;
+);
+spl1 = spl1 * outputGain;
+
+
+
