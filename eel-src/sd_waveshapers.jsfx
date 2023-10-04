@@ -1,0 +1,130 @@
+/* Compiled with JS2EEL v0.9.1 */
+
+desc:sd_waveshapers
+
+slider1:gainInDb=0 < 0, 36, 0.01 >Gain (dB)
+slider3:dryOutputDb=-96 < -96, 0, 0.1 >Dry (dB)
+slider4:wetOutputDb=0 < -96, 0, 0.1 >Wet (dB)
+slider5:volumeOutDb=0 < -18, 18, 0.01 >Volume (dB)
+
+slider2:algorithm=1 < 0, 15, 1 {Soft Clip: Arraya, Soft Clip: Sigmoid, Soft Clip: Sigmoid 2, Soft Clip: Hyperbolic Tangent, Soft Clip: Arctangent, Soft Clip: Fuzz Exponential, Exponential 2, Arctangent Square Root, Square Sign, Cube, Hard Clip, Half Wave Rectifier, Full Wave Rectifier, Square Law, Absolute Square Root} >Algorithm
+
+in_pin:In 0
+in_pin:In 1
+out_pin:In 0
+out_pin:In 1
+
+
+@slider
+
+((((algorithm !== 1 && algorithm !== 3) && algorithm !== 4) && algorithm !== 5) && algorithm !== 10) ? (
+gainInDb = 0;
+gainIn = 1;
+) : (gainIn = 10 ^ (gainInDb / (20));
+);
+dryOutput = dryOutputDb < -95 ? 0 : (10 ^ (dryOutputDb / (20)));
+wetOutput = wetOutputDb < -95 ? 0 : (10 ^ (wetOutputDb / (20)));
+volumeOut = 10 ^ (volumeOutDb / (20));
+
+
+@sample
+
+
+/* Channel 0 */
+
+algorithm == 0 ? (
+spl0 = 3 * spl0 * 0.5 * (1 - sqr(spl0) / (3));
+) : (algorithm == 1 ? (
+spl0 = (2 * 1 / ((1 + exp(-gainIn * spl0))) - 1);
+) : (algorithm == 2 ? (
+spl0 = (exp(spl0) - 1) * ($e + 1) / ((exp(spl0) + 1) * ($e - 1));
+) : (algorithm == 3 ? (
+spl0 = (exp(2 * spl0 * gainIn) - 1) / ((exp(2 * spl0 * gainIn) + 1)) / ((exp(2 * gainIn) - 1) / ((exp(2 * gainIn) + 1)));
+) : (algorithm == 4 ? (
+spl0 = atan(spl0 * gainIn) / (atan(gainIn));
+) : (algorithm == 5 ? (
+spl0 = sign(spl0) * (1 - exp(-abs(gainIn * spl0))) / ((1 - exp(-gainIn)));
+) : (algorithm == 6 ? (
+spl0 = ($e - exp((1 - spl0))) / (($e - 1));
+) : (algorithm == 7 ? (
+spl0 = ((2.5 * atan(0.9 * spl0) + 2.5 * sqrt((1 - sqr(0.9 * spl0)))) - 2.5);
+) : (algorithm == 8 ? (
+spl0 = sqr(spl0) * sign(spl0);
+) : (algorithm == 9 ? (
+spl0 = (spl0 ^ (3));
+) : (algorithm == 10 ? (
+spl0 *= gainIn;
+spl0 = abs(spl0) > 0.5 ? 0.5 * sign(spl0) : spl0;
+) : (algorithm == 11 ? (
+spl0 * 0.5 * (spl0 + abs(spl0))) : (algorithm == 12 ? (
+spl0 * abs(spl0)) : (algorithm == 13 ? (
+spl0 = sqr(spl0);
+) : (algorithm == 14 ? (
+spl0 = sqrt(abs(spl0));
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+spl0 = (spl0 * wetOutput + spl0 * dryOutput) * volumeOut;
+
+/* Channel 1 */
+
+algorithm == 0 ? (
+spl1 = 3 * spl1 * 0.5 * (1 - sqr(spl1) / (3));
+) : (algorithm == 1 ? (
+spl1 = (2 * 1 / ((1 + exp(-gainIn * spl1))) - 1);
+) : (algorithm == 2 ? (
+spl1 = (exp(spl1) - 1) * ($e + 1) / ((exp(spl1) + 1) * ($e - 1));
+) : (algorithm == 3 ? (
+spl1 = (exp(2 * spl1 * gainIn) - 1) / ((exp(2 * spl1 * gainIn) + 1)) / ((exp(2 * gainIn) - 1) / ((exp(2 * gainIn) + 1)));
+) : (algorithm == 4 ? (
+spl1 = atan(spl1 * gainIn) / (atan(gainIn));
+) : (algorithm == 5 ? (
+spl1 = sign(spl1) * (1 - exp(-abs(gainIn * spl1))) / ((1 - exp(-gainIn)));
+) : (algorithm == 6 ? (
+spl1 = ($e - exp((1 - spl1))) / (($e - 1));
+) : (algorithm == 7 ? (
+spl1 = ((2.5 * atan(0.9 * spl1) + 2.5 * sqrt((1 - sqr(0.9 * spl1)))) - 2.5);
+) : (algorithm == 8 ? (
+spl1 = sqr(spl1) * sign(spl1);
+) : (algorithm == 9 ? (
+spl1 = (spl1 ^ (3));
+) : (algorithm == 10 ? (
+spl1 *= gainIn;
+spl1 = abs(spl1) > 0.5 ? 0.5 * sign(spl1) : spl1;
+) : (algorithm == 11 ? (
+spl1 * 0.5 * (spl1 + abs(spl1))) : (algorithm == 12 ? (
+spl1 * abs(spl1)) : (algorithm == 13 ? (
+spl1 = sqr(spl1);
+) : (algorithm == 14 ? (
+spl1 = sqrt(abs(spl1));
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+);
+spl1 = (spl1 * wetOutput + spl1 * dryOutput) * volumeOut;
+
+
+
