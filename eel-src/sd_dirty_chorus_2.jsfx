@@ -1,0 +1,62 @@
+/* Compiled with JS2EEL v0.10.0 */
+
+desc:sd_dirty_chorus_2
+
+slider1:depth=1 < 0, 5, 0.01 >Depth
+slider2:freq=0.2 < 0.1, 6, 0.01 >Freq (Hz)
+
+in_pin:In 0
+in_pin:In 1
+out_pin:In 0
+out_pin:In 1
+
+
+@init
+
+numSamples__L = 2000;
+numSamples__R = 2000;
+modValue__L = 0;
+modValue__R = 0;
+readIndex__L = 0;
+readIndex__R = 0;
+bufferSize = 6000;
+buffer__B0 = 0 * bufferSize;
+buffer__B1 = 1 * bufferSize;
+buffer__size = bufferSize;
+
+
+@slider
+
+movement = 2 * $pi * freq / (srate);
+
+
+@sample
+
+modValue__L = sin(position) * depth / (100);
+numSamples__L += modValue__L;
+readIndex__L = (writeIndex - floor(numSamples__L));
+readIndex__L < 0 ? (
+readIndex__L += bufferSize;
+);
+modValue__R = cos(position) * depth / (100);
+numSamples__R += modValue__R;
+readIndex__R = (writeIndex - floor(numSamples__R));
+readIndex__R < 0 ? (
+readIndex__R += bufferSize;
+);
+bufferValueL__S4 = buffer__B0[readIndex__L];
+bufferValueR__S4 = buffer__B1[readIndex__R];
+writeIndex += 1;
+writeIndex >= bufferSize ? (
+writeIndex = 0;
+);
+buffer__B0[writeIndex] = spl0;
+buffer__B1[writeIndex] = spl1;
+spl0 = (spl0 + bufferValueL__S4);
+spl1 = (spl1 + bufferValueR__S4);
+position = (position + movement);
+position >= 2 * $pi ? (
+position -= 2 * $pi;
+);
+
+
